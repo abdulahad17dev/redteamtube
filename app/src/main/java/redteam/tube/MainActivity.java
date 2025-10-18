@@ -1,0 +1,402 @@
+package redteam.tube;
+
+import android.annotation.SuppressLint;
+import android.graphics.Color;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.WindowManager;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
+import android.widget.ProgressBar;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
+
+import redteam.tube.data.HistoryDatabase;
+import redteam.tube.data.WebViewRepositoryImpl;
+import redteam.tube.domain.WebViewRepository;
+import redteam.tube.utils.PreferencesManager;
+import redteam.tube.utils.YouTubeWebViewClient;
+
+public class MainActivity extends AppCompatActivity {
+
+    private WebView webView;
+    private ProgressBar progressBar;
+    private View customView;
+    private WebChromeClient.CustomViewCallback customViewCallback;
+    private ImageButton btnBack, btnForward, btnSettings, btnHome;
+    private WebViewRepository repository;
+    private ViewGroup bottomNavigationBar;
+    private Handler fullscreenCheckHandler;
+    private Runnable fullscreenCheckRunnable;
+    private PreferencesManager preferencesManager;
+    private HistoryDatabase historyDatabase;
+
+    @SuppressLint("SetJavaScriptEnabled")
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        // Initialize preferences and database
+        preferencesManager = new PreferencesManager(this);
+        historyDatabase = HistoryDatabase.getInstance(this);
+
+        // Apply fullscreen setting
+        applyFullscreenSetting();
+
+        // Initialize repository
+        repository = new WebViewRepositoryImpl();
+
+        // Initialize views
+        initViews();
+
+        // Setup WebView
+        setupWebView();
+
+        // Setup navigation buttons
+        setupNavigationButtons();
+
+        // Start fullscreen monitoring
+        startFullscreenMonitoring();
+
+        // Load URL from intent or default
+        String url = getIntent().getStringExtra("url");
+        if (url == null || url.isEmpty()) {
+            url = repository.getYouTubeUrl();
+        }
+        webView.loadUrl(url);
+    }
+
+    private void initViews() {
+        webView = findViewById(R.id.webView);
+        progressBar = findViewById(R.id.progressBar);
+        bottomNavigationBar = findViewById(R.id.bottomNavigationBar);
+        btnBack = findViewById(R.id.btnBack);
+        btnForward = findViewById(R.id.btnForward);
+        btnSettings = findViewById(R.id.btnSettings);
+        btnHome = findViewById(R.id.btnHome);
+    }
+
+    private void enableImmersiveMode() {
+        // Make activity fullscreen (hide status bar and navigation bar)
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        WindowInsetsControllerCompat controller = new WindowInsetsControllerCompat(getWindow(), getWindow().getDecorView());
+
+        controller.hide(WindowInsetsCompat.Type.systemBars());
+        controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+
+        // Keep screen on during playback
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+        // Set navigation bar color to black
+        getWindow().setNavigationBarColor(Color.BLACK);
+        getWindow().setStatusBarColor(Color.BLACK);
+    }
+
+    private void disableImmersiveMode() {
+        // Show system bars
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
+        WindowInsetsControllerCompat controller = new WindowInsetsControllerCompat(getWindow(), getWindow().getDecorView());
+
+        controller.show(WindowInsetsCompat.Type.systemBars());
+
+        // Clear keep screen on flag
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    }
+
+    private void applyFullscreenSetting() {
+        if (preferencesManager.isFullscreenEnabled()) {
+            enableImmersiveMode();
+        } else {
+            disableImmersiveMode();
+        }
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private void setupWebView() {
+        WebSettings webSettings = webView.getSettings();
+
+        // Enable JavaScript (required for YouTube)
+        webSettings.setJavaScriptEnabled(true);
+
+        // Enable DOM storage (required for YouTube)
+        webSettings.setDomStorageEnabled(true);
+
+        // Enable database storage
+        webSettings.setDatabaseEnabled(true);
+
+        // Enable caching for better performance
+        webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
+
+        // Support for media playback
+        webSettings.setMediaPlaybackRequiresUserGesture(false);
+
+        // Enable zoom controls
+        webSettings.setBuiltInZoomControls(true);
+        webSettings.setDisplayZoomControls(false);
+        webSettings.setSupportZoom(true);
+
+        // Enable viewport and wide viewport
+        webSettings.setUseWideViewPort(true);
+        webSettings.setLoadWithOverviewMode(true);
+
+        // Set user agent to mobile for better YouTube mobile experience
+        webSettings.setUserAgentString(webSettings.getUserAgentString().replace("; wv", ""));
+
+        // Enable mixed content (if needed)
+        webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+
+        // Enable hardware acceleration
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+
+        // Set WebViewClient
+        webView.setWebViewClient(new YouTubeWebViewClient(new YouTubeWebViewClient.OnPageLoadListener() {
+            @Override
+            public void onPageStarted(String url) {
+                updateNavigationButtons();
+            }
+
+            @Override
+            public void onPageFinished(String url) {
+                updateNavigationButtons();
+
+                // Save to history only if enabled (exclude default YouTube homepage)
+                if (preferencesManager.isHistoryEnabled() &&
+                    !url.equals("https://m.youtube.com") &&
+                    !url.equals("https://m.youtube.com/") &&
+                    !url.equals("https://www.youtube.com") &&
+                    !url.equals("https://www.youtube.com/")) {
+                    webView.evaluateJavascript(
+                        "(function() { return document.title; })();",
+                        title -> {
+                            String cleanTitle = title != null ? title.replace("\"", "") : "YouTube";
+                            historyDatabase.addHistory(url, cleanTitle);
+                        }
+                    );
+                }
+            }
+
+            @Override
+            public void onPageError() {
+                Toast.makeText(MainActivity.this, "Error loading page", Toast.LENGTH_SHORT).show();
+            }
+        }));
+
+        // Set WebChromeClient for fullscreen video support
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onShowCustomView(View view, CustomViewCallback callback) {
+                // Called when entering fullscreen video mode
+                if (customView != null) {
+                    callback.onCustomViewHidden();
+                    return;
+                }
+
+                customView = view;
+                customViewCallback = callback;
+
+                // Hide WebView and show fullscreen video view
+                webView.setVisibility(View.GONE);
+                bottomNavigationBar.setVisibility(View.GONE);
+
+                // Add custom view to DecorView
+                FrameLayout decorView = (FrameLayout) getWindow().getDecorView();
+                decorView.addView(customView, new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT
+                ));
+
+                // Enter fullscreen mode
+                enableImmersiveMode();
+            }
+
+            @Override
+            public void onHideCustomView() {
+                // Called when exiting fullscreen video mode
+                if (customView == null) {
+                    return;
+                }
+
+                // Remove custom view
+                FrameLayout decorView = (FrameLayout) getWindow().getDecorView();
+                decorView.removeView(customView);
+
+                // Show WebView again
+                webView.setVisibility(View.VISIBLE);
+                bottomNavigationBar.setVisibility(View.VISIBLE);
+
+                customView = null;
+                if (customViewCallback != null) {
+                    customViewCallback.onCustomViewHidden();
+                    customViewCallback = null;
+                }
+
+                // Restore immersive mode
+                enableImmersiveMode();
+            }
+
+            @Override
+            public void onProgressChanged(WebView view, int newProgress) {
+                super.onProgressChanged(view, newProgress);
+                if (progressBar != null) {
+                    if (newProgress < 100) {
+                        progressBar.setVisibility(View.VISIBLE);
+                        progressBar.setProgress(newProgress);
+                    } else {
+                        progressBar.setVisibility(View.GONE);
+                    }
+                }
+            }
+        });
+    }
+
+    private void setupNavigationButtons() {
+        btnBack.setOnClickListener(v -> handleBackPress());
+
+        btnForward.setOnClickListener(v -> {
+            if (webView.canGoForward()) {
+                webView.goForward();
+            }
+        });
+
+        btnSettings.setOnClickListener(v -> {
+            android.content.Intent intent = new android.content.Intent(this, SettingsActivity.class);
+            startActivity(intent);
+        });
+
+        btnHome.setOnClickListener(v -> finish());
+
+        updateNavigationButtons();
+    }
+
+    private void updateNavigationButtons() {
+        btnBack.setEnabled(webView.canGoBack());
+        btnBack.setAlpha(webView.canGoBack() ? 1.0f : 0.5f);
+
+        btnForward.setEnabled(webView.canGoForward());
+        btnForward.setAlpha(webView.canGoForward() ? 1.0f : 0.5f);
+    }
+
+    private void handleBackPress() {
+        if (webView.canGoBack()) {
+            webView.goBack();
+        } else {
+            finish();
+        }
+    }
+
+    private void startFullscreenMonitoring() {
+        fullscreenCheckHandler = new Handler(Looper.getMainLooper());
+        fullscreenCheckRunnable = new Runnable() {
+            @Override
+            public void run() {
+                checkAndUpdateButtonVisibility();
+                fullscreenCheckHandler.postDelayed(this, 500); // Check every 500ms
+            }
+        };
+        fullscreenCheckHandler.post(fullscreenCheckRunnable);
+    }
+
+    private void stopFullscreenMonitoring() {
+        if (fullscreenCheckHandler != null && fullscreenCheckRunnable != null) {
+            fullscreenCheckHandler.removeCallbacks(fullscreenCheckRunnable);
+        }
+    }
+
+    private void checkAndUpdateButtonVisibility() {
+        if (webView == null) {
+            return;
+        }
+
+        webView.evaluateJavascript(
+            "(function() { return document.fullscreenElement !== null; })();",
+            result -> {
+                boolean isFullscreen = "true".equals(result);
+                updateButtonVisibility(!isFullscreen);
+            }
+        );
+    }
+
+    private void updateButtonVisibility(boolean show) {
+        if (bottomNavigationBar != null) {
+            bottomNavigationBar.setVisibility(show ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        // If in fullscreen video, exit fullscreen first
+        if (customView != null) {
+            webView.getWebChromeClient().onHideCustomView();
+            return;
+        }
+
+        // If WebView can go back in history, navigate back
+        if (webView.canGoBack()) {
+            webView.goBack();
+        } else {
+            // Otherwise, close activity
+            super.onBackPressed();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopFullscreenMonitoring();
+        if (webView != null) {
+            webView.onPause();
+            webView.pauseTimers();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        // Re-apply fullscreen setting (in case it changed in Settings)
+        applyFullscreenSetting();
+
+        startFullscreenMonitoring();
+        if (webView != null) {
+            webView.onResume();
+            webView.resumeTimers();
+        }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            // Re-apply fullscreen setting when window regains focus
+            applyFullscreenSetting();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        stopFullscreenMonitoring();
+
+        if (webView != null) {
+            webView.loadUrl("about:blank");
+            webView.clearHistory();
+            webView.clearCache(true);
+            webView.onPause();
+            webView.removeAllViews();
+            webView.destroyDrawingCache();
+            webView.destroy();
+            webView = null;
+        }
+    }
+}
