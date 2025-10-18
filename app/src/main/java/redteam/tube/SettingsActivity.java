@@ -9,10 +9,11 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.SwitchCompat;
+import androidx.core.os.LocaleListCompat;
 
 import redteam.tube.data.HistoryDatabase;
-import redteam.tube.utils.LocaleHelper;
 import redteam.tube.utils.PreferencesManager;
 
 public class SettingsActivity extends AppCompatActivity {
@@ -31,9 +32,6 @@ public class SettingsActivity extends AppCompatActivity {
         preferencesManager = new PreferencesManager(this);
         historyDatabase = HistoryDatabase.getInstance(this);
 
-        // Apply language setting
-        LocaleHelper.setLocale(this, preferencesManager.getLanguage());
-
         setContentView(R.layout.activity_settings);
 
         // Initialize views
@@ -41,6 +39,13 @@ public class SettingsActivity extends AppCompatActivity {
 
         // Load current settings
         loadSettings();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Update language display when returning to activity
+        updateLanguageDisplay();
     }
 
     private void initViews() {
@@ -58,22 +63,6 @@ public class SettingsActivity extends AppCompatActivity {
         // Language selector
         btnLanguage.setOnClickListener(v -> showLanguageDialog());
 
-        // Fullscreen toggle
-        switchFullscreen.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            preferencesManager.setFullscreenEnabled(isChecked);
-            Toast.makeText(this,
-                isChecked ? R.string.fullscreen_enabled : R.string.fullscreen_disabled,
-                Toast.LENGTH_SHORT).show();
-        });
-
-        // History toggle
-        switchHistory.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            preferencesManager.setHistoryEnabled(isChecked);
-            Toast.makeText(this,
-                isChecked ? R.string.history_enabled : R.string.history_disabled,
-                Toast.LENGTH_SHORT).show();
-        });
-
         // View history
         btnViewHistory.setOnClickListener(v -> {
             Intent intent = new Intent(this, HistoryActivity.class);
@@ -85,13 +74,31 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void loadSettings() {
+        // Load values first WITHOUT listeners
         switchFullscreen.setChecked(preferencesManager.isFullscreenEnabled());
         switchHistory.setChecked(preferencesManager.isHistoryEnabled());
         updateLanguageDisplay();
+
+        // Set listeners AFTER loading values
+        switchFullscreen.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            preferencesManager.setFullscreenEnabled(isChecked);
+            Toast.makeText(this,
+                isChecked ? R.string.fullscreen_enabled : R.string.fullscreen_disabled,
+                Toast.LENGTH_SHORT).show();
+        });
+
+        switchHistory.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            preferencesManager.setHistoryEnabled(isChecked);
+            Toast.makeText(this,
+                isChecked ? R.string.history_enabled : R.string.history_disabled,
+                Toast.LENGTH_SHORT).show();
+        });
     }
 
     private void updateLanguageDisplay() {
-        String language = preferencesManager.getLanguage();
+        LocaleListCompat currentLocales = AppCompatDelegate.getApplicationLocales();
+        String language = currentLocales.isEmpty() ? "system" : currentLocales.get(0).getLanguage();
+
         String displayText;
         switch (language) {
             case "en":
@@ -114,15 +121,16 @@ public class SettingsActivity extends AppCompatActivity {
         };
         String[] languageCodes = {"en", "ru"};
 
-        String currentLang = preferencesManager.getLanguage();
+        LocaleListCompat currentLocales = AppCompatDelegate.getApplicationLocales();
+        String currentLang = currentLocales.isEmpty() ? "system" : currentLocales.get(0).getLanguage();
         int checkedItem = currentLang.equals("ru") ? 1 : 0;
 
         new AlertDialog.Builder(this)
             .setTitle(R.string.language)
             .setSingleChoiceItems(languages, checkedItem, (dialog, which) -> {
-                preferencesManager.setLanguage(languageCodes[which]);
-                updateLanguageDisplay();
-                Toast.makeText(this, R.string.restart_required, Toast.LENGTH_LONG).show();
+                String selectedLanguage = languageCodes[which];
+                LocaleListCompat locales = LocaleListCompat.forLanguageTags(selectedLanguage);
+                AppCompatDelegate.setApplicationLocales(locales);
                 dialog.dismiss();
             })
             .setNegativeButton(R.string.cancel, null)

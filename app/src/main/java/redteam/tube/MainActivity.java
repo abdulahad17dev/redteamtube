@@ -24,7 +24,6 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import redteam.tube.data.HistoryDatabase;
 import redteam.tube.data.WebViewRepositoryImpl;
 import redteam.tube.domain.WebViewRepository;
-import redteam.tube.utils.LocaleHelper;
 import redteam.tube.utils.PreferencesManager;
 import redteam.tube.utils.YouTubeWebViewClient;
 
@@ -50,9 +49,6 @@ public class MainActivity extends AppCompatActivity {
         // Initialize preferences and database
         preferencesManager = new PreferencesManager(this);
         historyDatabase = HistoryDatabase.getInstance(this);
-
-        // Apply language setting
-        LocaleHelper.setLocale(this, preferencesManager.getLanguage());
 
         setContentView(R.layout.activity_main);
 
