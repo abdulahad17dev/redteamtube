@@ -1,3 +1,44 @@
 <resources>
     <string name="app_name">RedTube</string>
+
+    <!-- Navigation -->
+    <string name="back">Back</string>
+    <string name="forward">Forward</string>
+    <string name="settings">Settings</string>
+    <string name="close_app">Close App</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="general_section">General</string>
+    <string name="language">Language</string>
+    <string name="language_description">Select app language</string>
+    <string name="language_english">English</string>
+    <string name="language_russian">Русский</string>
+    <string name="restart_required">Restart app to apply language</string>
+
+    <string name="fullscreen_mode">Fullscreen Mode</string>
+    <string name="fullscreen_description">Hide system bars for immersive experience</string>
+    <string name="fullscreen_enabled">Fullscreen enabled</string>
+    <string name="fullscreen_disabled">Fullscreen disabled</string>
+
+    <string name="save_history">Save History</string>
+    <string name="save_history_description">Automatically save browsing history</string>
+    <string name="history_enabled">History saving enabled</string>
+    <string name="history_disabled">History saving disabled</string>
+
+    <string name="history_section">History</string>
+    <string name="view_history">View History</string>
+    <string name="clear_history">Clear History</string>
+    <string name="clear_history_confirm">Are you sure you want to clear all history?</string>
+    <string name="clear">Clear</string>
+    <string name="cancel">Cancel</string>
+    <string name="history_cleared">History cleared</string>
+
+    <!-- History Activity -->
+    <string name="history_title">History</string>
+    <string name="no_history">No history yet</string>
+    <string name="delete">Delete</string>
+
+    <!-- Errors -->
+    <string name="error_loading_page">Error loading page</string>
 </resources>

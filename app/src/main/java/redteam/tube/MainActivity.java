@@ -24,6 +24,7 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import redteam.tube.data.HistoryDatabase;
 import redteam.tube.data.WebViewRepositoryImpl;
 import redteam.tube.domain.WebViewRepository;
+import redteam.tube.utils.LocaleHelper;
 import redteam.tube.utils.PreferencesManager;
 import redteam.tube.utils.YouTubeWebViewClient;
 
@@ -33,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private View customView;
     private WebChromeClient.CustomViewCallback customViewCallback;
-    private ImageButton btnBack, btnForward, btnSettings, btnHome;
+    private ViewGroup btnBack, btnForward, btnSettings, btnHome;
     private WebViewRepository repository;
     private ViewGroup bottomNavigationBar;
     private Handler fullscreenCheckHandler;
@@ -45,11 +46,15 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
 
         // Initialize preferences and database
         preferencesManager = new PreferencesManager(this);
         historyDatabase = HistoryDatabase.getInstance(this);
+
+        // Apply language setting
+        LocaleHelper.setLocale(this, preferencesManager.getLanguage());
+
+        setContentView(R.layout.activity_main);
 
         // Apply fullscreen setting
         applyFullscreenSetting();
@@ -280,11 +285,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateNavigationButtons() {
-        btnBack.setEnabled(webView.canGoBack());
-        btnBack.setAlpha(webView.canGoBack() ? 1.0f : 0.5f);
+        boolean canGoBack = webView.canGoBack();
+        boolean canGoForward = webView.canGoForward();
 
-        btnForward.setEnabled(webView.canGoForward());
-        btnForward.setAlpha(webView.canGoForward() ? 1.0f : 0.5f);
+        btnBack.setEnabled(canGoBack);
+        btnBack.setAlpha(canGoBack ? 1.0f : 0.4f);
+
+        btnForward.setEnabled(canGoForward);
+        btnForward.setAlpha(canGoForward ? 1.0f : 0.4f);
     }
 
     private void handleBackPress() {

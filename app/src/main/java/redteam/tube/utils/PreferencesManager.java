@@ -7,6 +7,7 @@ public class PreferencesManager {
     private static final String PREF_NAME = "YouTubeSettings";
     private static final String KEY_FULLSCREEN_ENABLED = "fullscreen_enabled";
     private static final String KEY_HISTORY_ENABLED = "history_enabled";
+    private static final String KEY_LANGUAGE = "language";
 
     private final SharedPreferences preferences;
 
@@ -28,5 +29,13 @@ public class PreferencesManager {
 
     public void setHistoryEnabled(boolean enabled) {
         preferences.edit().putBoolean(KEY_HISTORY_ENABLED, enabled).apply();
+    }
+
+    public String getLanguage() {
+        return preferences.getString(KEY_LANGUAGE, "system"); // Default: system language
+    }
+
+    public void setLanguage(String language) {
+        preferences.edit().putString(KEY_LANGUAGE, language).apply();
     }
 }

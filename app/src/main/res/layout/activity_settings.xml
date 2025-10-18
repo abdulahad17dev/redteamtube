@@ -3,8 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#000000"
-    android:padding="16dp">
+    android:background="@color/youtube_black">
 
     <!-- Header -->
     <LinearLayout
@@ -12,24 +11,28 @@
         android:layout_height="56dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:background="?attr/colorPrimary">
+        android:background="@color/youtube_black"
+        android:paddingStart="4dp"
+        android:paddingEnd="16dp"
+        android:elevation="4dp">
 
         <ImageButton
             android:id="@+id/btnBackSettings"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Back"
-            android:src="@drawable/ic_arrow_back" />
+            android:contentDescription="@string/back"
+            android:src="@drawable/ic_arrow_back"
+            android:tint="@color/text_primary" />
 
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Settings"
-            android:textColor="#FFFFFF"
+            android:text="@string/settings_title"
+            android:textColor="@color/text_primary"
             android:textSize="20sp"
-            android:textStyle="bold"
+            android:fontFamily="sans-serif-medium"
             android:paddingStart="8dp"
             android:paddingEnd="8dp" />
 
@@ -39,43 +42,126 @@
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginTop="16dp">
+        android:layout_weight="1">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp">
+
+            <!-- General Section Header -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/general_section"
+                android:textColor="@color/text_tertiary"
+                android:textSize="13sp"
+                android:fontFamily="sans-serif-medium"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:paddingTop="16dp"
+                android:paddingBottom="8dp"
+                android:textAllCaps="true"
+                android:letterSpacing="0.05" />
+
+            <!-- Language Setting -->
+            <LinearLayout
+                android:id="@+id/btnLanguage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:paddingTop="16dp"
+                android:paddingBottom="16dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginEnd="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/language"
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp"
+                        android:fontFamily="sans-serif" />
+
+                    <TextView
+                        android:id="@+id/tvCurrentLanguage"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/language_description"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="sans-serif"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
+
+                <ImageButton
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:background="@null"
+                    android:contentDescription="@string/language"
+                    android:src="@android:drawable/ic_menu_edit"
+                    android:tint="@color/text_secondary"
+                    android:layout_gravity="center_vertical" />
+
+            </LinearLayout>
+
+            <!-- Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/divider"
+                android:layout_marginStart="20dp"
+                android:layout_marginEnd="0dp" />
 
             <!-- Fullscreen Setting -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:padding="16dp"
-                android:background="?attr/selectableItemBackground">
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:paddingTop="16dp"
+                android:paddingBottom="16dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
 
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:orientation="vertical"
+                    android:layout_marginEnd="16dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Fullscreen Mode"
-                        android:textColor="#FFFFFF"
+                        android:text="@string/fullscreen_mode"
+                        android:textColor="@color/text_primary"
                         android:textSize="16sp"
-                        android:textStyle="bold" />
+                        android:fontFamily="sans-serif" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Enable immersive fullscreen experience"
-                        android:textColor="#AAAAAA"
-                        android:textSize="14sp"
-                        android:layout_marginTop="4dp" />
+                        android:text="@string/fullscreen_description"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="sans-serif"
+                        android:layout_marginTop="2dp" />
 
                 </LinearLayout>
 
@@ -91,39 +177,46 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="#333333"
-                android:layout_marginStart="16dp"
-                android:layout_marginEnd="16dp" />
+                android:background="@color/divider"
+                android:layout_marginStart="20dp"
+                android:layout_marginEnd="0dp" />
 
             <!-- Save History Setting -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:padding="16dp"
-                android:background="?attr/selectableItemBackground">
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:paddingTop="16dp"
+                android:paddingBottom="16dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
 
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:orientation="vertical"
+                    android:layout_marginEnd="16dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Save History"
-                        android:textColor="#FFFFFF"
+                        android:text="@string/save_history"
+                        android:textColor="@color/text_primary"
                         android:textSize="16sp"
-                        android:textStyle="bold" />
+                        android:fontFamily="sans-serif" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Save browsing history automatically"
-                        android:textColor="#AAAAAA"
-                        android:textSize="14sp"
-                        android:layout_marginTop="4dp" />
+                        android:text="@string/save_history_description"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:fontFamily="sans-serif"
+                        android:layout_marginTop="2dp" />
 
                 </LinearLayout>
 
@@ -135,23 +228,26 @@
 
             </LinearLayout>
 
-            <!-- Divider -->
+            <!-- Spacing -->
             <View
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#333333"
-                android:layout_marginStart="16dp"
-                android:layout_marginEnd="16dp" />
+                android:layout_height="12dp"
+                android:background="@color/youtube_black" />
 
-            <!-- History Section -->
+            <!-- History Section Header -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="History"
-                android:textColor="#FFFFFF"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:padding="16dp" />
+                android:text="@string/history_section"
+                android:textColor="@color/text_tertiary"
+                android:textSize="13sp"
+                android:fontFamily="sans-serif-medium"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:paddingTop="16dp"
+                android:paddingBottom="8dp"
+                android:textAllCaps="true"
+                android:letterSpacing="0.05" />
 
             <!-- View History Button -->
             <LinearLayout
@@ -159,7 +255,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:padding="16dp"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="14dp"
                 android:background="?attr/selectableItemBackground"
                 android:gravity="center_vertical">
 
@@ -167,16 +266,18 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="View History"
-                    android:textColor="#FFFFFF"
-                    android:textSize="16sp" />
+                    android:text="@string/view_history"
+                    android:textColor="@color/text_primary"
+                    android:textSize="16sp"
+                    android:fontFamily="sans-serif" />
 
                 <ImageButton
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="View History"
-                    android:src="@android:drawable/ic_menu_recent_history" />
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:background="@null"
+                    android:contentDescription="@string/view_history"
+                    android:src="@android:drawable/ic_menu_recent_history"
+                    android:tint="@color/text_secondary" />
 
             </LinearLayout>
 
@@ -184,9 +285,9 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="#333333"
-                android:layout_marginStart="16dp"
-                android:layout_marginEnd="16dp" />
+                android:background="@color/divider"
+                android:layout_marginStart="20dp"
+                android:layout_marginEnd="0dp" />
 
             <!-- Clear History Button -->
             <LinearLayout
@@ -194,7 +295,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:padding="16dp"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="14dp"
                 android:background="?attr/selectableItemBackground"
                 android:gravity="center_vertical">
 
@@ -202,16 +306,18 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Clear History"
-                    android:textColor="#FF5555"
-                    android:textSize="16sp" />
+                    android:text="@string/clear_history"
+                    android:textColor="@color/youtube_red"
+                    android:textSize="16sp"
+                    android:fontFamily="sans-serif" />
 
                 <ImageButton
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Clear History"
-                    android:src="@android:drawable/ic_menu_delete" />
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:background="@null"
+                    android:contentDescription="@string/clear_history"
+                    android:src="@android:drawable/ic_menu_delete"
+                    android:tint="@color/youtube_red" />
 
             </LinearLayout>
 

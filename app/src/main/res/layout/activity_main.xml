@@ -1,79 +1,131 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     android:background="#000000"
     tools:context=".MainActivity">
 
-    <!-- WebView -->
-    <WebView
-        android:id="@+id/webView"
+    <!-- WebView Container -->
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="0dp"
+        android:layout_weight="1">
 
-    <!-- Progress Bar -->
-    <ProgressBar
-        android:id="@+id/progressBar"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent"
-        android:layout_height="3dp"
-        android:layout_gravity="top"
-        android:visibility="gone" />
+        <!-- WebView -->
+        <WebView
+            android:id="@+id/webView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
 
-    <!-- Bottom Navigation Bar -->
+        <!-- Progress Bar -->
+        <ProgressBar
+            android:id="@+id/progressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:layout_gravity="top"
+            android:visibility="gone" />
+
+    </FrameLayout>
+
+    <!-- Bottom Navigation Bar - YouTube Style -->
     <LinearLayout
         android:id="@+id/bottomNavigationBar"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_gravity="bottom"
-        android:background="?android:attr/colorBackground"
-        android:elevation="8dp"
+        android:layout_height="64dp"
+        android:background="@color/youtube_dark_gray"
+        android:elevation="16dp"
         android:gravity="center"
         android:orientation="horizontal"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp">
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp">
 
         <!-- Back Button -->
-        <ImageButton
+        <LinearLayout
             android:id="@+id/btnBack"
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="match_parent"
             android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Back"
-            android:src="@drawable/ic_arrow_back" />
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:contentDescription="@string/back"
+                android:src="@drawable/ic_arrow_back"
+                android:tint="@color/text_primary" />
+
+        </LinearLayout>
 
         <!-- Forward Button -->
-        <ImageButton
+        <LinearLayout
             android:id="@+id/btnForward"
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="match_parent"
             android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Forward"
-            android:src="@android:drawable/ic_menu_directions" />
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:contentDescription="@string/forward"
+                android:src="@drawable/ic_arrow_forward"
+                android:tint="@color/text_primary" />
+
+        </LinearLayout>
 
         <!-- Settings Button -->
-        <ImageButton
+        <LinearLayout
             android:id="@+id/btnSettings"
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="match_parent"
             android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Settings"
-            android:src="@drawable/ic_settings" />
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:contentDescription="@string/settings"
+                android:src="@drawable/ic_settings"
+                android:tint="@color/text_primary" />
+
+        </LinearLayout>
 
         <!-- Close/Exit Button -->
-        <ImageButton
+        <LinearLayout
             android:id="@+id/btnHome"
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="match_parent"
             android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Close App"
-            android:src="@drawable/ic_home" />
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:contentDescription="@string/close_app"
+                android:src="@drawable/ic_home"
+                android:tint="@color/text_primary" />
+
+        </LinearLayout>
 
     </LinearLayout>
 
-</FrameLayout>
+</LinearLayout>

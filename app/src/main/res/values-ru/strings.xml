@@ -1,0 +1,44 @@
+<resources>
+    <string name="app_name">RedTube</string>
+
+    <!-- Navigation -->
+    <string name="back">Назад</string>
+    <string name="forward">Вперёд</string>
+    <string name="settings">Настройки</string>
+    <string name="close_app">Закрыть</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Настройки</string>
+    <string name="general_section">Общие</string>
+    <string name="language">Язык</string>
+    <string name="language_description">Выберите язык приложения</string>
+    <string name="language_english">English</string>
+    <string name="language_russian">Русский</string>
+    <string name="restart_required">Перезапустите приложение для применения языка</string>
+
+    <string name="fullscreen_mode">Полноэкранный режим</string>
+    <string name="fullscreen_description">Скрыть системные панели для погружения</string>
+    <string name="fullscreen_enabled">Полноэкранный режим включён</string>
+    <string name="fullscreen_disabled">Полноэкранный режим выключен</string>
+
+    <string name="save_history">Сохранять историю</string>
+    <string name="save_history_description">Автоматически сохранять историю просмотров</string>
+    <string name="history_enabled">Сохранение истории включено</string>
+    <string name="history_disabled">Сохранение истории выключено</string>
+
+    <string name="history_section">История</string>
+    <string name="view_history">Просмотр истории</string>
+    <string name="clear_history">Очистить историю</string>
+    <string name="clear_history_confirm">Вы уверены, что хотите очистить всю историю?</string>
+    <string name="clear">Очистить</string>
+    <string name="cancel">Отмена</string>
+    <string name="history_cleared">История очищена</string>
+
+    <!-- History Activity -->
+    <string name="history_title">История</string>
+    <string name="no_history">История пуста</string>
+    <string name="delete">Удалить</string>
+
+    <!-- Errors -->
+    <string name="error_loading_page">Ошибка загрузки страницы</string>
+</resources>
