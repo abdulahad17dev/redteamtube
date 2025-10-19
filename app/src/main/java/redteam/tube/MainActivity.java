@@ -24,10 +24,14 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import redteam.tube.data.HistoryDatabase;
 import redteam.tube.data.WebViewRepositoryImpl;
 import redteam.tube.domain.WebViewRepository;
+import redteam.tube.utils.DisplayIdConstants;
 import redteam.tube.utils.PreferencesManager;
 import redteam.tube.utils.YouTubeWebViewClient;
+import android.util.Log;
 
 public class MainActivity extends AppCompatActivity {
+
+    private static final String TAG = "MainActivity";
 
     private WebView webView;
     private ProgressBar progressBar;
@@ -41,6 +45,10 @@ public class MainActivity extends AppCompatActivity {
     private PreferencesManager preferencesManager;
     private HistoryDatabase historyDatabase;
 
+    // Display ID поддержка
+    private int currentDisplayId = 0;
+    private boolean isLaunchedInFullscreenDisplay = false;
+
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,6 +57,9 @@ public class MainActivity extends AppCompatActivity {
         // Initialize preferences and database
         preferencesManager = new PreferencesManager(this);
         historyDatabase = HistoryDatabase.getInstance(this);
+
+        // Определяем Display ID на котором запущено приложение
+        detectDisplayId();
 
         setContentView(R.layout.activity_main);
 
@@ -516,5 +527,57 @@ public class MainActivity extends AppCompatActivity {
             webView.destroy();
             webView = null;
         }
+    }
+
+    /**
+     * Определение Display ID на котором запущена Activity
+     */
+    private void detectDisplayId() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            // Android 11+ (API 30+)
+            android.view.Display display = getDisplay();
+            if (display != null) {
+                currentDisplayId = display.getDisplayId();
+                isLaunchedInFullscreenDisplay = DisplayIdConstants.isFullscreenDisplay(currentDisplayId);
+
+                Log.i(TAG, "╔═══════════════════════════════════════════════════════════╗");
+                Log.i(TAG, "║          DISPLAY ID DETECTION                            ║");
+                Log.i(TAG, "╠═══════════════════════════════════════════════════════════╣");
+                Log.i(TAG, "║ Display ID: " + currentDisplayId + " (0x" +
+                      Integer.toHexString(currentDisplayId) + ")");
+                Log.i(TAG, "║ Display Name: " + DisplayIdConstants.getDisplayName(currentDisplayId));
+                Log.i(TAG, "║ Is Fullscreen Display: " + isLaunchedInFullscreenDisplay);
+                Log.i(TAG, "║ Is Rear Display: " + DisplayIdConstants.isRearDisplay(currentDisplayId));
+                Log.i(TAG, "╚═══════════════════════════════════════════════════════════╝");
+
+                // Если запущено в fullscreen режиме - принудительно включаем immersive mode
+                if (isLaunchedInFullscreenDisplay) {
+                    Log.i(TAG, "▶ Launched in FULLSCREEN display - enabling immersive mode");
+                    enableImmersiveMode();
+
+                    // Показываем Toast с информацией
+                    Toast.makeText(this,
+                        "Launched in " + DisplayIdConstants.getDisplayName(currentDisplayId),
+                        Toast.LENGTH_LONG).show();
+                }
+            }
+        } else {
+            // Для старых версий Android
+            Log.w(TAG, "Display ID detection requires Android 11+ (API 30+)");
+        }
+    }
+
+    /**
+     * Получить текущий Display ID
+     */
+    public int getCurrentDisplayId() {
+        return currentDisplayId;
+    }
+
+    /**
+     * Проверка, запущено ли приложение в fullscreen режиме
+     */
+    public boolean isLaunchedInFullscreenMode() {
+        return isLaunchedInFullscreenDisplay;
     }
 }
