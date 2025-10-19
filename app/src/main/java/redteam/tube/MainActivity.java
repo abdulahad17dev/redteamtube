@@ -160,6 +160,11 @@ public class MainActivity extends AppCompatActivity {
         // Enable hardware acceleration
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
+        // Enable remote debugging for WebView
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
+
         // Set WebViewClient
         webView.setWebViewClient(new YouTubeWebViewClient(new YouTubeWebViewClient.OnPageLoadListener() {
             @Override
@@ -384,6 +389,115 @@ public class MainActivity extends AppCompatActivity {
         if (hasFocus) {
             // Re-apply fullscreen setting when window regains focus
             applyFullscreenSetting();
+        }
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent event) {
+        // Handle media key events from headphones/bluetooth devices
+        if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+            switch (event.getKeyCode()) {
+                case android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
+                    togglePlayPause();
+                    return true;
+
+                case android.view.KeyEvent.KEYCODE_MEDIA_PLAY:
+                    playVideo();
+                    return true;
+
+                case android.view.KeyEvent.KEYCODE_MEDIA_PAUSE:
+                case android.view.KeyEvent.KEYCODE_MEDIA_STOP:
+                    pauseVideo();
+                    return true;
+
+                case android.view.KeyEvent.KEYCODE_MEDIA_NEXT:
+                    nextVideo();
+                    return true;
+
+                case android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS:
+                    previousVideo();
+                    return true;
+            }
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
+    private void playVideo() {
+        if (webView != null) {
+            webView.evaluateJavascript(
+                "(function() {" +
+                "  var video = document.querySelector('video');" +
+                "  if (!video) return 'error: No video element found';" +
+                "  video.play();" +
+                "  return 'Video playing';" +
+                "})();",
+                null
+            );
+        }
+    }
+
+    private void pauseVideo() {
+        if (webView != null) {
+
+            webView.evaluateJavascript(
+                "(function() {" +
+                "  var video = document.querySelector('video');" +
+                "  if (!video) return 'error: No video element found';" +
+                "  video.pause();" +
+                "  return 'Video paused';" +
+                "})();",
+                null
+            );
+        }
+    }
+
+    private void togglePlayPause() {
+        if (webView != null) {
+            webView.evaluateJavascript(
+                "(function() {" +
+                "  var video = document.querySelector('video');" +
+                "  if (!video) return 'error: No video element found';" +
+                "  if (video.paused) {" +
+                "    video.play();" +
+                "    return 'Video resumed';" +
+                "  } else {" +
+                "    video.pause();" +
+                "    return 'Video paused';" +
+                "  }" +
+                "})();",
+                null
+            );
+        }
+    }
+
+    private void nextVideo() {
+        if (webView != null) {
+            webView.evaluateJavascript(
+                "(function() {" +
+                "  var buttons = document.querySelectorAll('.player-middle-controls-prev-next-button');" +
+                "  if (buttons.length > 1) {" +
+                "    buttons[1].click();" +
+                "    return 'Next video clicked';" +
+                "  }" +
+                "  return 'error: Next button not found';" +
+                "})();",
+                null
+            );
+        }
+    }
+
+    private void previousVideo() {
+        if (webView != null) {
+            webView.evaluateJavascript(
+                "(function() {" +
+                "  if (window.history.length > 1) {" +
+                "    window.history.back();" +
+                "    return 'Navigated back';" +
+                "  }" +
+                "  return 'error: No history';" +
+                "})();",
+                null
+            );
         }
     }
 

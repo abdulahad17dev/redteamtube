@@ -1,9 +1,53 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.Redteamtube" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+    <!-- YouTube Dark Theme -->
+    <style name="Base.Theme.Redteamtube" parent="Theme.AppCompat.NoActionBar">
+        <!-- Force dark theme -->
+        <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
+
+        <!-- Primary colors -->
+        <item name="colorPrimary">@color/youtube_red</item>
+        <item name="colorPrimaryDark">@color/youtube_black</item>
+        <item name="colorAccent">@color/youtube_red</item>
+
+        <!-- Material Design 2/3 color attributes - ALL SET TO RED to prevent purple -->
+        <item name="colorSecondary">@color/youtube_red</item>
+        <item name="colorSecondaryVariant">@color/youtube_red</item>
+        <item name="colorOnSecondary">@color/youtube_white</item>
+        <item name="colorPrimaryVariant">@color/youtube_red</item>
+        <item name="colorOnPrimary">@color/youtube_white</item>
+
+        <!-- Background colors -->
+        <item name="android:colorBackground">@color/youtube_black</item>
+        <item name="android:windowBackground">@color/youtube_black</item>
+        <item name="colorSurface">@color/youtube_black</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+
+        <!-- Status bar and navigation bar -->
+        <item name="android:statusBarColor">@color/youtube_black</item>
+        <item name="android:navigationBarColor">@color/youtube_black</item>
+
+        <!-- Text colors -->
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+
+        <!-- Switch/Toggle/Checkbox colors -->
+        <item name="colorControlActivated">@color/youtube_red</item>
+        <item name="colorControlNormal">@color/text_secondary</item>
+        <item name="colorSwitchThumbNormal">@color/text_secondary</item>
+
+        <!-- Ripple/Highlight colors - RED -->
+        <item name="colorControlHighlight">#40FF0000</item>
+        <item name="android:colorControlHighlight">#40FF0000</item>
     </style>
 
-    <style name="Theme.Redteamtube" parent="Base.Theme.Redteamtube" />
+    <style name="Theme.Redteamtube" parent="Base.Theme.Redteamtube">
+        <!-- Override Switch style -->
+        <item name="switchStyle">@style/YouTubeSwitchStyle</item>
+    </style>
+
+    <!-- Custom Switch Style -->
+    <style name="YouTubeSwitchStyle" parent="Widget.AppCompat.CompoundButton.Switch">
+        <item name="thumbTint">@color/switch_thumb_color</item>
+        <item name="trackTint">@color/switch_track_color</item>
+    </style>
 </resources>
