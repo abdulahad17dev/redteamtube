@@ -1,5 +1,7 @@
 package redteam.tube;
 
+import android.app.ActivityOptions;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.ImageButton;
@@ -19,6 +21,7 @@ import redteam.tube.utils.PreferencesManager;
 public class SettingsActivity extends AppCompatActivity {
 
     private SwitchCompat switchFullscreen;
+    private SwitchCompat switchFullscreenDisplayLaunch; // Новый переключатель
     private SwitchCompat switchHistory;
     private TextView tvCurrentLanguage;
     private PreferencesManager preferencesManager;
@@ -53,6 +56,7 @@ public class SettingsActivity extends AppCompatActivity {
         LinearLayout btnLanguage = findViewById(R.id.btnLanguage);
         tvCurrentLanguage = findViewById(R.id.tvCurrentLanguage);
         switchFullscreen = findViewById(R.id.switchFullscreen);
+        switchFullscreenDisplayLaunch = findViewById(R.id.switchFullscreenDisplayLaunch); // Новый переключатель
         switchHistory = findViewById(R.id.switchHistory);
         LinearLayout btnViewHistory = findViewById(R.id.btnViewHistory);
         LinearLayout btnClearHistory = findViewById(R.id.btnClearHistory);
@@ -76,6 +80,7 @@ public class SettingsActivity extends AppCompatActivity {
     private void loadSettings() {
         // Load values first WITHOUT listeners
         switchFullscreen.setChecked(preferencesManager.isFullscreenEnabled());
+        switchFullscreenDisplayLaunch.setChecked(preferencesManager.isFullscreenDisplayLaunchEnabled());
         switchHistory.setChecked(preferencesManager.isHistoryEnabled());
         updateLanguageDisplay();
 
@@ -83,15 +88,32 @@ public class SettingsActivity extends AppCompatActivity {
         switchFullscreen.setOnCheckedChangeListener((buttonView, isChecked) -> {
             preferencesManager.setFullscreenEnabled(isChecked);
             Toast.makeText(this,
-                isChecked ? R.string.fullscreen_enabled : R.string.fullscreen_disabled,
-                Toast.LENGTH_SHORT).show();
+                    isChecked ? R.string.fullscreen_enabled : R.string.fullscreen_disabled,
+                    Toast.LENGTH_SHORT).show();
+        });
+
+        // Новый переключатель для автозапуска в Fullscreen Display
+        switchFullscreenDisplayLaunch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            preferencesManager.setFullscreenDisplayLaunchEnabled(isChecked);
+
+            // Restart MainActivity on specific display
+            Intent intent = new Intent();
+            intent.setComponent(new ComponentName("redteam.tube", "redteam.tube.MainActivity"));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+
+            // Явно указываем Display ID для обоих случаев
+            ActivityOptions options = ActivityOptions.makeBasic();
+            options.setLaunchDisplayId(isChecked ? 1003 : 1001);
+
+            startActivity(intent, options.toBundle());
+            finish();
         });
 
         switchHistory.setOnCheckedChangeListener((buttonView, isChecked) -> {
             preferencesManager.setHistoryEnabled(isChecked);
             Toast.makeText(this,
-                isChecked ? R.string.history_enabled : R.string.history_disabled,
-                Toast.LENGTH_SHORT).show();
+                    isChecked ? R.string.history_enabled : R.string.history_disabled,
+                    Toast.LENGTH_SHORT).show();
         });
     }
 
@@ -116,8 +138,8 @@ public class SettingsActivity extends AppCompatActivity {
 
     private void showLanguageDialog() {
         String[] languages = {
-            getString(R.string.language_english),
-            getString(R.string.language_russian)
+                getString(R.string.language_english),
+                getString(R.string.language_russian)
         };
         String[] languageCodes = {"en", "ru"};
 
@@ -126,26 +148,26 @@ public class SettingsActivity extends AppCompatActivity {
         int checkedItem = currentLang.equals("ru") ? 1 : 0;
 
         new AlertDialog.Builder(this)
-            .setTitle(R.string.language)
-            .setSingleChoiceItems(languages, checkedItem, (dialog, which) -> {
-                String selectedLanguage = languageCodes[which];
-                LocaleListCompat locales = LocaleListCompat.forLanguageTags(selectedLanguage);
-                AppCompatDelegate.setApplicationLocales(locales);
-                dialog.dismiss();
-            })
-            .setNegativeButton(R.string.cancel, null)
-            .show();
+                .setTitle(R.string.language)
+                .setSingleChoiceItems(languages, checkedItem, (dialog, which) -> {
+                    String selectedLanguage = languageCodes[which];
+                    LocaleListCompat locales = LocaleListCompat.forLanguageTags(selectedLanguage);
+                    AppCompatDelegate.setApplicationLocales(locales);
+                    dialog.dismiss();
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
 
     private void showClearHistoryDialog() {
         new AlertDialog.Builder(this)
-            .setTitle(R.string.clear_history)
-            .setMessage(R.string.clear_history_confirm)
-            .setPositiveButton(R.string.clear, (dialog, which) -> {
-                historyDatabase.clearHistory();
-                Toast.makeText(this, R.string.history_cleared, Toast.LENGTH_SHORT).show();
-            })
-            .setNegativeButton(R.string.cancel, null)
-            .show();
+                .setTitle(R.string.clear_history)
+                .setMessage(R.string.clear_history_confirm)
+                .setPositiveButton(R.string.clear, (dialog, which) -> {
+                    historyDatabase.clearHistory();
+                    Toast.makeText(this, R.string.history_cleared, Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
 }

@@ -27,6 +27,12 @@ import redteam.tube.domain.WebViewRepository;
 import redteam.tube.utils.DisplayIdConstants;
 import redteam.tube.utils.PreferencesManager;
 import redteam.tube.utils.YouTubeWebViewClient;
+
+import android.app.ActivityOptions;
+import android.content.ComponentName;
+import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 public class MainActivity extends AppCompatActivity {
@@ -60,6 +66,12 @@ public class MainActivity extends AppCompatActivity {
 
         // Определяем Display ID на котором запущено приложение
         detectDisplayId();
+
+        // КЛЮЧЕВАЯ ЛОГИКА: Автоматический запуск на Display 1003
+        if (shouldLaunchOnFullscreenDisplay()) {
+            Log.i(TAG, "▶ Auto-launching on Display 1003...");
+            launchOnFullscreenDisplay();
+        }
 
         setContentView(R.layout.activity_main);
 
@@ -512,22 +524,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        stopFullscreenMonitoring();
-
-        if (webView != null) {
-            webView.loadUrl("about:blank");
-            webView.clearHistory();
-            webView.clearCache(true);
-            webView.onPause();
-            webView.removeAllViews();
-            webView.destroyDrawingCache();
-            webView.destroy();
-            webView = null;
-        }
-    }
 
     /**
      * Определение Display ID на котором запущена Activity
@@ -579,5 +575,68 @@ public class MainActivity extends AppCompatActivity {
      */
     public boolean isLaunchedInFullscreenMode() {
         return isLaunchedInFullscreenDisplay;
+    }
+
+    /**
+     * Проверка, нужно ли открыть fullscreen режим через Wms API
+     *
+     * @return true если нужно открыть fullscreen, false если нет
+     */
+    /**
+     * Проверка нужно ли запускать приложение на Display 1003
+     */
+    private boolean shouldLaunchOnFullscreenDisplay() {
+        // Проверяем включена ли настройка автозапуска в fullscreen
+        boolean autoLaunchEnabled = preferencesManager.isFullscreenDisplayLaunchEnabled();
+
+        // Проверяем что мы НЕ на fullscreen дисплее (Display ID != 1003)
+        boolean notInFullscreen = currentDisplayId != DisplayIdConstants.DISPLAY_ID_FULL;
+
+        Log.i(TAG, "shouldLaunchOnFullscreenDisplay() check:");
+        Log.i(TAG, "  - Auto-launch enabled: " + autoLaunchEnabled);
+        Log.i(TAG, "  - Current Display ID: " + currentDisplayId);
+        Log.i(TAG, "  - Not in fullscreen: " + notInFullscreen);
+
+        return autoLaunchEnabled && notInFullscreen;
+    }
+
+    /**
+     * Запуск приложения на Display 1003
+     */
+    private void launchOnFullscreenDisplay() {
+        try {
+            Intent intent = new Intent();
+            intent.setComponent(new ComponentName("redteam.tube", "redteam.tube.MainActivity"));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+            ActivityOptions options = ActivityOptions.makeBasic();
+            options.setLaunchDisplayId(1003);
+
+            this.startActivity(intent, options.toBundle());
+
+            Log.i(TAG, "✅ Launch intent sent for Display 1003");
+
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Failed to launch on Display 1003", e);
+            Toast.makeText(this, "Failed to launch on fullscreen display", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        stopFullscreenMonitoring();
+
+        // WebView cleanup
+        if (webView != null) {
+            webView.clearHistory();
+            webView.clearCache(true);
+            webView.loadUrl("about:blank");
+            webView.onPause();
+            webView.removeAllViews();
+            webView.destroyDrawingCache();
+            webView.destroy();
+            webView = null;
+        }
     }
 }

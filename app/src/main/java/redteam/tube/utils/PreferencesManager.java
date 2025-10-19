@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 public class PreferencesManager {
     private static final String PREF_NAME = "YouTubeSettings";
     private static final String KEY_FULLSCREEN_ENABLED = "fullscreen_enabled";
+    private static final String KEY_FULLSCREEN_DISPLAY_LAUNCH = "fullscreen_display_launch"; // Запуск в fullscreen display
     private static final String KEY_HISTORY_ENABLED = "history_enabled";
     private static final String KEY_LANGUAGE = "language";
 
@@ -37,5 +38,19 @@ public class PreferencesManager {
 
     public void setLanguage(String language) {
         preferences.edit().putString(KEY_LANGUAGE, language).apply();
+    }
+
+    /**
+     * Проверка, включен ли автозапуск в Fullscreen Display (1003)
+     */
+    public boolean isFullscreenDisplayLaunchEnabled() {
+        return preferences.getBoolean(KEY_FULLSCREEN_DISPLAY_LAUNCH, false); // Default: disabled
+    }
+
+    /**
+     * Включить/выключить автозапуск в Fullscreen Display (1003)
+     */
+    public void setFullscreenDisplayLaunchEnabled(boolean enabled) {
+        preferences.edit().putBoolean(KEY_FULLSCREEN_DISPLAY_LAUNCH, enabled).apply();
     }
 }
