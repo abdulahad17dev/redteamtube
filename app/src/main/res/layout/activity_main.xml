@@ -28,6 +28,23 @@
             android:layout_gravity="top"
             android:visibility="gone" />
 
+        <!-- Floating Back Button (no permission required) -->
+        <ImageButton
+            android:id="@+id/floatingBackButton"
+            android:layout_width="144dp"
+            android:layout_height="144dp"
+            android:layout_gravity="bottom|start"
+            android:layout_marginStart="16dp"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/floating_button_background"
+            android:contentDescription="@string/back"
+            android:elevation="8dp"
+            android:padding="16dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_arrow_back_floating"
+            android:tint="@android:color/white"
+            android:visibility="gone" />
+
     </FrameLayout>
 
     <!-- Bottom Navigation Bar - YouTube Style -->

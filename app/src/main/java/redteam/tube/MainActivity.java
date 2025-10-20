@@ -40,7 +40,6 @@ import android.util.Log;
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
-    private static final int REQUEST_CODE_OVERLAY_PERMISSION = 1001;
 
     private WebView webView;
     private ProgressBar progressBar;
@@ -62,11 +61,11 @@ public class MainActivity extends AppCompatActivity {
     // Broadcast receiver для zoom настроек
     private android.content.BroadcastReceiver zoomReceiver;
 
-    // Floating back button overlay
-    private android.view.WindowManager windowManager;
-    private View floatingBackButton;
-    private android.view.WindowManager.LayoutParams floatingParams;
+    // Floating back button (internal View - no permission required)
+    private android.widget.ImageButton floatingBackButton;
     private android.content.BroadcastReceiver floatingBackReceiver;
+    private float dX, dY;
+    private int lastAction;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -109,14 +108,9 @@ public class MainActivity extends AppCompatActivity {
         // Register broadcast receiver для zoom обновлений
         registerZoomReceiver();
 
-        // Initialize WindowManager and floating back button
-        windowManager = (android.view.WindowManager) getSystemService(WINDOW_SERVICE);
+        // Initialize floating back button (internal View - no permission required)
         registerFloatingBackReceiver();
-
-        // Show floating back button if enabled
-        if (preferencesManager.isFloatingBackEnabled()) {
-            showFloatingBackButton();
-        }
+        setupFloatingBackButton();
 
         // Load URL from intent or default
         String url = getIntent().getStringExtra("url");
@@ -169,194 +163,119 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Показать floating back button overlay
+     * Setup floating back button (internal View - no permission required)
+     */
+    private void setupFloatingBackButton() {
+        // Get floating button from layout
+        floatingBackButton = findViewById(R.id.floatingBackButton);
+
+        // Set visibility based on preference
+        if (preferencesManager.isFloatingBackEnabled()) {
+            floatingBackButton.setVisibility(View.VISIBLE);
+        } else {
+            floatingBackButton.setVisibility(View.GONE);
+        }
+
+        // Restore saved position
+        floatingBackButton.post(() -> {
+            float savedX = preferencesManager.getFloatingBackX();
+            float savedY = preferencesManager.getFloatingBackY();
+
+            if (savedX != 0 || savedY != 0) {
+                floatingBackButton.setX(savedX);
+                floatingBackButton.setY(savedY);
+                Log.i(TAG, "Restored floating button position: X=" + savedX + ", Y=" + savedY);
+            }
+        });
+
+        // Set click listener - webView.goBack(), НЕ закрывать приложение
+        floatingBackButton.setOnClickListener(v -> {
+            if (webView != null && webView.canGoBack()) {
+                webView.goBack();
+                Log.i(TAG, "Floating back button: navigating back in WebView");
+            } else {
+                // НЕ закрываем приложение - просто ничего не делаем
+                Log.i(TAG, "Floating back button: WebView cannot go back - ignoring");
+            }
+        });
+
+        // Add drag functionality
+        setupFloatingButtonDrag();
+
+        Log.i(TAG, "Floating back button setup complete (internal View)");
+    }
+
+    /**
+     * Показать floating back button
      */
     private void showFloatingBackButton() {
         if (floatingBackButton != null) {
-            // Already shown
-            return;
-        }
-
-        try {
-            // Inflate floating button layout
-            floatingBackButton = getLayoutInflater().inflate(R.layout.floating_back_button, null);
-
-            // Setup WindowManager.LayoutParams
-            // Для Geely/Ecarx используем TYPE_PHONE который не требует специального разрешения
-            int windowType;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                // Android 8.0+ - пробуем TYPE_APPLICATION_OVERLAY если есть разрешение
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M
-                        && Settings.canDrawOverlays(this)) {
-                    windowType = android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
-                } else {
-                    // Fallback на TYPE_PHONE (deprecated но работает без разрешений)
-                    windowType = android.view.WindowManager.LayoutParams.TYPE_PHONE;
-                }
-            } else {
-                // Android 7.x и ниже - TYPE_PHONE работает без проблем
-                windowType = android.view.WindowManager.LayoutParams.TYPE_PHONE;
-            }
-
-            floatingParams = new android.view.WindowManager.LayoutParams(
-                    android.view.WindowManager.LayoutParams.WRAP_CONTENT,
-                    android.view.WindowManager.LayoutParams.WRAP_CONTENT,
-                    windowType,
-                    android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-                    android.graphics.PixelFormat.TRANSLUCENT
-            );
-
-            // Set initial position from preferences
-            floatingParams.gravity = android.view.Gravity.TOP | android.view.Gravity.START;
-            floatingParams.x = preferencesManager.getFloatingBackX();
-            floatingParams.y = preferencesManager.getFloatingBackY();
-
-            // Set click listener - только webView.goBack(), НЕ закрывать приложение
-            android.widget.ImageButton btnFloating = floatingBackButton.findViewById(R.id.floatingBackButton);
-            btnFloating.setOnClickListener(v -> {
-                if (webView != null && webView.canGoBack()) {
-                    webView.goBack();
-                    Log.i(TAG, "Floating back button: navigating back in WebView");
-                } else {
-                    Log.i(TAG, "Floating back button: WebView cannot go back");
-                    Toast.makeText(this, "Cannot go back", Toast.LENGTH_SHORT).show();
-                }
-            });
-
-            // Add drag functionality AFTER click listener
-            setupFloatingButtonDrag(btnFloating);
-
-            // Add to window
-            windowManager.addView(floatingBackButton, floatingParams);
-
-            Log.i(TAG, "Floating back button shown at X=" + floatingParams.x + ", Y=" + floatingParams.y + " with type=" + windowType);
-
-        } catch (android.view.WindowManager.BadTokenException e) {
-            Log.e(TAG, "BadTokenException - trying to request overlay permission", e);
-
-            // Если не получилось, пробуем запросить разрешение (только если система поддерживает)
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                requestOverlayPermission();
-            } else {
-                Toast.makeText(this, "Failed to show floating button", Toast.LENGTH_SHORT).show();
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to show floating back button", e);
-            Toast.makeText(this, "Failed to show floating button: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            floatingBackButton.setVisibility(View.VISIBLE);
+            Log.i(TAG, "Floating back button shown");
         }
     }
 
     /**
-     * Запросить разрешение на отображение overlay
-     */
-    private void requestOverlayPermission() {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            try {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:" + getPackageName()));
-                startActivityForResult(intent, REQUEST_CODE_OVERLAY_PERMISSION);
-
-                Toast.makeText(this,
-                        "Please grant overlay permission to use floating back button",
-                        Toast.LENGTH_LONG).show();
-            } catch (android.content.ActivityNotFoundException e) {
-                Log.w(TAG, "MANAGE_OVERLAY_PERMISSION activity not found (custom ROM?)", e);
-                Toast.makeText(this,
-                        "Overlay permission screen not available on this device",
-                        Toast.LENGTH_LONG).show();
-            }
-        }
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        if (requestCode == REQUEST_CODE_OVERLAY_PERMISSION) {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                if (Settings.canDrawOverlays(this)) {
-                    Log.i(TAG, "Overlay permission granted");
-                    Toast.makeText(this, "Overlay permission granted", Toast.LENGTH_SHORT).show();
-
-                    // Показываем floating кнопку если она должна быть включена
-                    if (preferencesManager.isFloatingBackEnabled()) {
-                        showFloatingBackButton();
-                    }
-                } else {
-                    Log.w(TAG, "Overlay permission denied");
-                    Toast.makeText(this, "Overlay permission denied. Floating button disabled.", Toast.LENGTH_LONG).show();
-
-                    // Выключаем настройку если разрешение не дали
-                    preferencesManager.setFloatingBackEnabled(false);
-                }
-            }
-        }
-    }
-
-    /**
-     * Скрыть floating back button overlay
+     * Скрыть floating back button
      */
     private void hideFloatingBackButton() {
         if (floatingBackButton != null) {
-            try {
-                windowManager.removeView(floatingBackButton);
-                floatingBackButton = null;
-                Log.i(TAG, "Floating back button hidden");
-            } catch (Exception e) {
-                Log.e(TAG, "Failed to hide floating back button", e);
-            }
+            floatingBackButton.setVisibility(View.GONE);
+            Log.i(TAG, "Floating back button hidden");
         }
     }
 
     /**
-     * Setup drag and drop для floating кнопки
+     * Setup drag and drop для floating кнопки (internal View version)
      */
-    private void setupFloatingButtonDrag(android.widget.ImageButton button) {
-        button.setOnTouchListener(new View.OnTouchListener() {
-            private int initialX;
-            private int initialY;
-            private float initialTouchX;
-            private float initialTouchY;
+    private void setupFloatingButtonDrag() {
+        floatingBackButton.setOnTouchListener(new View.OnTouchListener() {
             private boolean isDragging = false;
+            private float initialX;
+            private float initialY;
 
             @Override
             public boolean onTouch(View v, android.view.MotionEvent event) {
                 switch (event.getAction()) {
                     case android.view.MotionEvent.ACTION_DOWN:
-                        initialX = floatingParams.x;
-                        initialY = floatingParams.y;
-                        initialTouchX = event.getRawX();
-                        initialTouchY = event.getRawY();
+                        initialX = v.getX();
+                        initialY = v.getY();
+                        dX = v.getX() - event.getRawX();
+                        dY = v.getY() - event.getRawY();
+                        lastAction = android.view.MotionEvent.ACTION_DOWN;
                         isDragging = false;
-                        return true; // Consume DOWN event
+                        return true;
 
                     case android.view.MotionEvent.ACTION_MOVE:
-                        floatingParams.x = initialX + (int) (event.getRawX() - initialTouchX);
-                        floatingParams.y = initialY + (int) (event.getRawY() - initialTouchY);
-                        windowManager.updateViewLayout(floatingBackButton, floatingParams);
+                        v.setX(event.getRawX() + dX);
+                        v.setY(event.getRawY() + dY);
+                        lastAction = android.view.MotionEvent.ACTION_MOVE;
 
                         // Check if actually dragging (moved more than threshold)
-                        int deltaX = (int) Math.abs(event.getRawX() - initialTouchX);
-                        int deltaY = (int) Math.abs(event.getRawY() - initialTouchY);
+                        float deltaX = Math.abs(v.getX() - initialX);
+                        float deltaY = Math.abs(v.getY() - initialY);
                         if (deltaX > 10 || deltaY > 10) {
                             isDragging = true;
                         }
-                        return true; // Consume move event
+                        return true;
 
                     case android.view.MotionEvent.ACTION_UP:
-                        // Save position to preferences
-                        preferencesManager.setFloatingBackX(floatingParams.x);
-                        preferencesManager.setFloatingBackY(floatingParams.y);
-                        Log.i(TAG, "Floating button position saved: X=" + floatingParams.x + ", Y=" + floatingParams.y);
+                        // Save position to preferences if dragged
+                        if (isDragging) {
+                            preferencesManager.setFloatingBackX((int) v.getX());
+                            preferencesManager.setFloatingBackY((int) v.getY());
+                            Log.i(TAG, "Floating button position saved: X=" + v.getX() + ", Y=" + v.getY());
+                        }
 
                         // If it was a click (not dragging), perform click
-                        if (!isDragging) {
+                        if (!isDragging && lastAction == android.view.MotionEvent.ACTION_DOWN) {
                             v.performClick();
                             return true;
                         }
 
+                        lastAction = android.view.MotionEvent.ACTION_UP;
                         isDragging = false;
-                        return true; // Consume UP event
+                        return true;
                 }
                 return false;
             }
@@ -519,6 +438,15 @@ public class MainActivity extends AppCompatActivity {
                     FrameLayout.LayoutParams.MATCH_PARENT
                 ));
 
+                // НЕ перемещаем floating button - просто поднимаем на максимальный elevation
+                // Она останется в оригинальном контейнере, но будет поверх всего
+                if (floatingBackButton != null && preferencesManager.isFloatingBackEnabled()) {
+                    floatingBackButton.setVisibility(View.VISIBLE);
+                    floatingBackButton.bringToFront();
+                    floatingBackButton.setElevation(1000f); // Максимальный elevation
+                    Log.i(TAG, "Floating button brought to front with elevation 1000");
+                }
+
                 // Enter fullscreen mode
                 enableImmersiveMode();
             }
@@ -533,6 +461,13 @@ public class MainActivity extends AppCompatActivity {
                 // Remove custom view
                 FrameLayout decorView = (FrameLayout) getWindow().getDecorView();
                 decorView.removeView(customView);
+
+                // Floating button не перемещалась - просто убедимся что она видима
+                if (floatingBackButton != null && preferencesManager.isFloatingBackEnabled()) {
+                    floatingBackButton.setVisibility(View.VISIBLE);
+                    floatingBackButton.setElevation(8f); // Вернуть обычный elevation
+                    Log.i(TAG, "Floating button visibility restored after fullscreen exit");
+                }
 
                 // Show WebView again
                 webView.setVisibility(View.VISIBLE);
@@ -969,7 +904,7 @@ public class MainActivity extends AppCompatActivity {
 
         Log.i(TAG, "Applied zoom - Page: " + pageZoom + "%, Text: " + textSize + "%, BottomBar: " + bottomBarSize + "%");
     }
-    
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
