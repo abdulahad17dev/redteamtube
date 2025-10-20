@@ -9,6 +9,9 @@ public class PreferencesManager {
     private static final String KEY_FULLSCREEN_DISPLAY_LAUNCH = "fullscreen_display_launch"; // Запуск в fullscreen display
     private static final String KEY_HISTORY_ENABLED = "history_enabled";
     private static final String KEY_LANGUAGE = "language";
+    private static final String KEY_PAGE_ZOOM = "page_zoom"; // CSS zoom (50-200%)
+    private static final String KEY_TEXT_SIZE = "text_size"; // Text zoom (50-200%)
+    private static final String KEY_BOTTOM_BAR_SIZE = "bottom_bar_size"; // Bottom bar size (50-200%)
 
     private final SharedPreferences preferences;
 
@@ -52,5 +55,47 @@ public class PreferencesManager {
      */
     public void setFullscreenDisplayLaunchEnabled(boolean enabled) {
         preferences.edit().putBoolean(KEY_FULLSCREEN_DISPLAY_LAUNCH, enabled).apply();
+    }
+
+    /**
+     * Получить Page Zoom (CSS zoom) в процентах (50-200)
+     */
+    public int getPageZoom() {
+        return preferences.getInt(KEY_PAGE_ZOOM, 100); // Default: 100%
+    }
+
+    /**
+     * Установить Page Zoom (CSS zoom) в процентах (50-200)
+     */
+    public void setPageZoom(int zoom) {
+        preferences.edit().putInt(KEY_PAGE_ZOOM, zoom).apply();
+    }
+
+    /**
+     * Получить Text Size в процентах (50-200)
+     */
+    public int getTextSize() {
+        return preferences.getInt(KEY_TEXT_SIZE, 100); // Default: 100%
+    }
+
+    /**
+     * Установить Text Size в процентах (50-200)
+     */
+    public void setTextSize(int size) {
+        preferences.edit().putInt(KEY_TEXT_SIZE, size).apply();
+    }
+
+    /**
+     * Получить Bottom Bar Size в процентах (50-200)
+     */
+    public int getBottomBarSize() {
+        return preferences.getInt(KEY_BOTTOM_BAR_SIZE, 100); // Default: 100%
+    }
+
+    /**
+     * Установить Bottom Bar Size в процентах (50-200)
+     */
+    public void setBottomBarSize(int size) {
+        preferences.edit().putInt(KEY_BOTTOM_BAR_SIZE, size).apply();
     }
 }

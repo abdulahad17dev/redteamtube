@@ -129,6 +129,54 @@ private void launchOnFullscreenDisplay() {
 | **Маленький APK** | 6.7 MB |
 | **Надежность** | Стандартный Android API |
 | **Универсальность** | Работает на всех Android устройствах с multi-display |
+| **Адаптивный Zoom** | Автоматическая адаптация масштаба для разных дисплеев + кнопки +/- |
+
+---
+
+## 🔍 Zoom Адаптация WebView
+
+### **1. Адаптивный Initial Scale**
+
+WebView автоматически настраивает начальный масштаб в зависимости от Display ID:
+
+```java
+// MainActivity.setupWebView()
+int initialScale = getInitialScaleForDisplay();
+webView.setInitialScale(initialScale);
+```
+
+| Display ID | Название | Initial Scale | Описание |
+|------------|----------|---------------|----------|
+| 1003 (0x3eb) | Fullscreen | 100% | Стандартный масштаб для большого экрана |
+| 1001 (0x3e9) | Central Screen | 85% | Уменьшен для лучшего обзора |
+| Другие | - | 80-100% | Зависит от разрешения (>2560px = 100%, >1920px = 90%, <1920px = 80%) |
+
+### **2. Кнопки Zoom +/-**
+
+Bottom navigation содержит кнопки для ручного управления масштабом:
+
+- **Zoom In (+)**: Увеличение на 10%
+- **Zoom Out (-)**: Уменьшение на 10%
+- **Диапазон**: 50% - 300%
+- **Toast**: Показывает текущий масштаб
+
+```java
+private void zoomIn() {
+    currentZoomLevel += 0.1f; // +10%
+    webView.setScaleX(currentZoomLevel);
+    webView.setScaleY(currentZoomLevel);
+}
+```
+
+### **3. Pinch-to-Zoom**
+
+Встроенная поддержка жестов масштабирования:
+
+```java
+webSettings.setBuiltInZoomControls(true);
+webSettings.setDisplayZoomControls(false);
+webSettings.setSupportZoom(true);
+```
 
 ---
 

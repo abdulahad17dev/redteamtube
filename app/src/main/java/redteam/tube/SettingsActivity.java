@@ -24,6 +24,12 @@ public class SettingsActivity extends AppCompatActivity {
     private SwitchCompat switchFullscreenDisplayLaunch; // Новый переключатель
     private SwitchCompat switchHistory;
     private TextView tvCurrentLanguage;
+    private android.widget.SeekBar seekBarPageZoom;
+    private android.widget.SeekBar seekBarTextSize;
+    private android.widget.SeekBar seekBarBottomBarSize;
+    private TextView tvPageZoomValue;
+    private TextView tvTextSizeValue;
+    private TextView tvBottomBarSizeValue;
     private PreferencesManager preferencesManager;
     private HistoryDatabase historyDatabase;
 
@@ -61,6 +67,14 @@ public class SettingsActivity extends AppCompatActivity {
         LinearLayout btnViewHistory = findViewById(R.id.btnViewHistory);
         LinearLayout btnClearHistory = findViewById(R.id.btnClearHistory);
 
+        // Zoom controls
+        seekBarPageZoom = findViewById(R.id.seekBarPageZoom);
+        seekBarTextSize = findViewById(R.id.seekBarTextSize);
+        seekBarBottomBarSize = findViewById(R.id.seekBarBottomBarSize);
+        tvPageZoomValue = findViewById(R.id.tvPageZoomValue);
+        tvTextSizeValue = findViewById(R.id.tvTextSizeValue);
+        tvBottomBarSizeValue = findViewById(R.id.tvBottomBarSizeValue);
+
         // Back button
         btnBack.setOnClickListener(v -> finish());
 
@@ -75,6 +89,10 @@ public class SettingsActivity extends AppCompatActivity {
 
         // Clear history
         btnClearHistory.setOnClickListener(v -> showClearHistoryDialog());
+
+        // Apply Zoom button
+        LinearLayout btnApplyZoom = findViewById(R.id.btnApplyZoom);
+        btnApplyZoom.setOnClickListener(v -> applyZoomToWebView());
     }
 
     private void loadSettings() {
@@ -114,6 +132,88 @@ public class SettingsActivity extends AppCompatActivity {
             Toast.makeText(this,
                     isChecked ? R.string.history_enabled : R.string.history_disabled,
                     Toast.LENGTH_SHORT).show();
+        });
+
+        // Load zoom values and set up SeekBars
+        loadZoomSettings();
+    }
+
+    private void loadZoomSettings() {
+        // Load saved values (50-200%)
+        int pageZoom = preferencesManager.getPageZoom();
+        int textSize = preferencesManager.getTextSize();
+        int bottomBarSize = preferencesManager.getBottomBarSize();
+
+        // Convert percentage to SeekBar progress (0-150)
+        // Formula: progress = percentage - 50
+        int pageZoomProgress = pageZoom - 50;
+        int textSizeProgress = textSize - 50;
+        int bottomBarSizeProgress = bottomBarSize - 50;
+
+        // Set SeekBar values WITHOUT triggering listeners
+        seekBarPageZoom.setProgress(pageZoomProgress);
+        seekBarTextSize.setProgress(textSizeProgress);
+        seekBarBottomBarSize.setProgress(bottomBarSizeProgress);
+
+        // Update text views
+        tvPageZoomValue.setText(pageZoom + "%");
+        tvTextSizeValue.setText(textSize + "%");
+        tvBottomBarSizeValue.setText(bottomBarSize + "%");
+
+        // Set listeners AFTER loading values
+        seekBarPageZoom.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
+                // Convert progress (0-150) to percentage (50-200)
+                int percentage = progress + 50;
+                tvPageZoomValue.setText(percentage + "%");
+            }
+
+            @Override
+            public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(android.widget.SeekBar seekBar) {
+                int percentage = seekBar.getProgress() + 50;
+                preferencesManager.setPageZoom(percentage);
+                Toast.makeText(SettingsActivity.this, "Page Zoom: " + percentage + "%", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        seekBarTextSize.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
+                int percentage = progress + 50;
+                tvTextSizeValue.setText(percentage + "%");
+            }
+
+            @Override
+            public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(android.widget.SeekBar seekBar) {
+                int percentage = seekBar.getProgress() + 50;
+                preferencesManager.setTextSize(percentage);
+                Toast.makeText(SettingsActivity.this, "Text Size: " + percentage + "%", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        seekBarBottomBarSize.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
+                int percentage = progress + 50;
+                tvBottomBarSizeValue.setText(percentage + "%");
+            }
+
+            @Override
+            public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(android.widget.SeekBar seekBar) {
+                int percentage = seekBar.getProgress() + 50;
+                preferencesManager.setBottomBarSize(percentage);
+                Toast.makeText(SettingsActivity.this, "Bottom Bar Size: " + percentage + "%", Toast.LENGTH_SHORT).show();
+            }
         });
     }
 
@@ -169,5 +269,16 @@ public class SettingsActivity extends AppCompatActivity {
                 })
                 .setNegativeButton(R.string.cancel, null)
                 .show();
+    }
+
+    /**
+     * Применить zoom настройки к WebView в MainActivity
+     */
+    private void applyZoomToWebView() {
+        // Отправляем broadcast для обновления zoom в MainActivity
+        Intent intent = new Intent("redteam.tube.APPLY_ZOOM");
+        sendBroadcast(intent);
+
+        Toast.makeText(this, "Zoom settings applied", Toast.LENGTH_SHORT).show();
     }
 }

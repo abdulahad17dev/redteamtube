@@ -51,9 +51,13 @@ public class MainActivity extends AppCompatActivity {
     private PreferencesManager preferencesManager;
     private HistoryDatabase historyDatabase;
 
+
     // Display ID поддержка
     private int currentDisplayId = 0;
     private boolean isLaunchedInFullscreenDisplay = false;
+
+    // Broadcast receiver для zoom настроек
+    private android.content.BroadcastReceiver zoomReceiver;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -93,12 +97,33 @@ public class MainActivity extends AppCompatActivity {
         // Start fullscreen monitoring
         startFullscreenMonitoring();
 
+        // Register broadcast receiver для zoom обновлений
+        registerZoomReceiver();
+
         // Load URL from intent or default
         String url = getIntent().getStringExtra("url");
         if (url == null || url.isEmpty()) {
             url = repository.getYouTubeUrl();
         }
         webView.loadUrl(url);
+    }
+
+    /**
+     * Регистрирует BroadcastReceiver для получения сигналов об обновлении zoom
+     */
+    private void registerZoomReceiver() {
+        zoomReceiver = new android.content.BroadcastReceiver() {
+            @Override
+            public void onReceive(android.content.Context context, Intent intent) {
+                if ("redteam.tube.APPLY_ZOOM".equals(intent.getAction())) {
+                    Log.i(TAG, "Received zoom update broadcast");
+                    applyZoomSettings();
+                }
+            }
+        };
+
+        android.content.IntentFilter filter = new android.content.IntentFilter("redteam.tube.APPLY_ZOOM");
+        registerReceiver(zoomReceiver, filter);
     }
 
     private void initViews() {
@@ -174,6 +199,9 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setUseWideViewPort(true);
         webSettings.setLoadWithOverviewMode(true);
 
+        // НЕ устанавливаем initialScale - пусть WebView управляет масштабом сам
+        // это позволит zoomIn()/zoomOut() работать правильно
+
         // Set user agent to mobile for better YouTube mobile experience
         webSettings.setUserAgentString(webSettings.getUserAgentString().replace("; wv", ""));
 
@@ -198,6 +226,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPageFinished(String url) {
                 updateNavigationButtons();
+
+                // Apply zoom settings from preferences
+                applyZoomSettings();
 
                 // Save to history only if enabled (exclude default YouTube homepage)
                 if (preferencesManager.isHistoryEnabled() &&
@@ -622,10 +653,53 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Применяет zoom настройки из preferences
+     */
+    private void applyZoomSettings() {
+        // Page Zoom (CSS zoom на body)
+        int pageZoom = preferencesManager.getPageZoom(); // 50-200%
+        float pageZoomFloat = pageZoom / 100.0f; // Convert to 0.5-2.0
+        String scriptPageZoom = "document.body.style.zoom = '" + pageZoomFloat + "';";
+        webView.evaluateJavascript(scriptPageZoom, null);
+
+        // Text Size (setTextZoom)
+        int textSize = preferencesManager.getTextSize(); // 50-200%
+        webView.getSettings().setTextZoom(textSize);
+
+        // Apply separate zoom to bottom navigation bar icons only
+        int bottomBarSize = preferencesManager.getBottomBarSize(); // 50-200%
+        float bottomBarFloat = bottomBarSize / 100.0f; // Convert to 0.5-2.0
+        if (bottomNavigationBar != null) {
+            // Найти все ImageView иконки внутри bottom bar
+            for (int i = 0; i < ((ViewGroup) bottomNavigationBar).getChildCount(); i++) {
+                View child = ((ViewGroup) bottomNavigationBar).getChildAt(i);
+                if (child instanceof ViewGroup) {
+                    ViewGroup buttonLayout = (ViewGroup) child;
+                    for (int j = 0; j < buttonLayout.getChildCount(); j++) {
+                        View icon = buttonLayout.getChildAt(j);
+                        if (icon instanceof android.widget.ImageView) {
+                            icon.setScaleX(bottomBarFloat);
+                            icon.setScaleY(bottomBarFloat);
+                        }
+                    }
+                }
+            }
+        }
+
+        Log.i(TAG, "Applied zoom - Page: " + pageZoom + "%, Text: " + textSize + "%, BottomBar: " + bottomBarSize + "%");
+    }
+    
     @Override
     protected void onDestroy() {
         super.onDestroy();
         stopFullscreenMonitoring();
+
+        // Unregister zoom receiver
+        if (zoomReceiver != null) {
+            unregisterReceiver(zoomReceiver);
+            zoomReceiver = null;
+        }
 
         // WebView cleanup
         if (webView != null) {
