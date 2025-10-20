@@ -12,6 +12,9 @@ public class PreferencesManager {
     private static final String KEY_PAGE_ZOOM = "page_zoom"; // CSS zoom (50-200%)
     private static final String KEY_TEXT_SIZE = "text_size"; // Text zoom (50-200%)
     private static final String KEY_BOTTOM_BAR_SIZE = "bottom_bar_size"; // Bottom bar size (50-200%)
+    private static final String KEY_FLOATING_BACK_ENABLED = "floating_back_enabled"; // Floating back button enabled
+    private static final String KEY_FLOATING_BACK_X = "floating_back_x"; // Floating back button X position
+    private static final String KEY_FLOATING_BACK_Y = "floating_back_y"; // Floating back button Y position
 
     private final SharedPreferences preferences;
 
@@ -97,5 +100,47 @@ public class PreferencesManager {
      */
     public void setBottomBarSize(int size) {
         preferences.edit().putInt(KEY_BOTTOM_BAR_SIZE, size).apply();
+    }
+
+    /**
+     * Проверка, включена ли floating back кнопка
+     */
+    public boolean isFloatingBackEnabled() {
+        return preferences.getBoolean(KEY_FLOATING_BACK_ENABLED, false); // Default: disabled
+    }
+
+    /**
+     * Включить/выключить floating back кнопку
+     */
+    public void setFloatingBackEnabled(boolean enabled) {
+        preferences.edit().putBoolean(KEY_FLOATING_BACK_ENABLED, enabled).apply();
+    }
+
+    /**
+     * Получить X позицию floating back кнопки
+     */
+    public int getFloatingBackX() {
+        return preferences.getInt(KEY_FLOATING_BACK_X, 100); // Default: 100px from left
+    }
+
+    /**
+     * Установить X позицию floating back кнопки
+     */
+    public void setFloatingBackX(int x) {
+        preferences.edit().putInt(KEY_FLOATING_BACK_X, x).apply();
+    }
+
+    /**
+     * Получить Y позицию floating back кнопки
+     */
+    public int getFloatingBackY() {
+        return preferences.getInt(KEY_FLOATING_BACK_Y, 100); // Default: 100px from top
+    }
+
+    /**
+     * Установить Y позицию floating back кнопки
+     */
+    public void setFloatingBackY(int y) {
+        preferences.edit().putInt(KEY_FLOATING_BACK_Y, y).apply();
     }
 }

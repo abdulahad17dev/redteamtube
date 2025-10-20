@@ -22,6 +22,7 @@ public class SettingsActivity extends AppCompatActivity {
 
     private SwitchCompat switchFullscreen;
     private SwitchCompat switchFullscreenDisplayLaunch; // Новый переключатель
+    private SwitchCompat switchFloatingBack; // Floating back button
     private SwitchCompat switchHistory;
     private TextView tvCurrentLanguage;
     private android.widget.SeekBar seekBarPageZoom;
@@ -63,6 +64,7 @@ public class SettingsActivity extends AppCompatActivity {
         tvCurrentLanguage = findViewById(R.id.tvCurrentLanguage);
         switchFullscreen = findViewById(R.id.switchFullscreen);
         switchFullscreenDisplayLaunch = findViewById(R.id.switchFullscreenDisplayLaunch); // Новый переключатель
+        switchFloatingBack = findViewById(R.id.switchFloatingBack); // Floating back button
         switchHistory = findViewById(R.id.switchHistory);
         LinearLayout btnViewHistory = findViewById(R.id.btnViewHistory);
         LinearLayout btnClearHistory = findViewById(R.id.btnClearHistory);
@@ -99,6 +101,7 @@ public class SettingsActivity extends AppCompatActivity {
         // Load values first WITHOUT listeners
         switchFullscreen.setChecked(preferencesManager.isFullscreenEnabled());
         switchFullscreenDisplayLaunch.setChecked(preferencesManager.isFullscreenDisplayLaunchEnabled());
+        switchFloatingBack.setChecked(preferencesManager.isFloatingBackEnabled());
         switchHistory.setChecked(preferencesManager.isHistoryEnabled());
         updateLanguageDisplay();
 
@@ -125,6 +128,20 @@ public class SettingsActivity extends AppCompatActivity {
 
             startActivity(intent, options.toBundle());
             finish();
+        });
+
+        // Floating back button переключатель
+        switchFloatingBack.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            preferencesManager.setFloatingBackEnabled(isChecked);
+
+            // Отправляем broadcast для показа/скрытия floating кнопки
+            Intent intent = new Intent("redteam.tube.TOGGLE_FLOATING_BACK");
+            intent.putExtra("enabled", isChecked);
+            sendBroadcast(intent);
+
+            Toast.makeText(this,
+                    isChecked ? "Floating Back Button Enabled" : "Floating Back Button Disabled",
+                    Toast.LENGTH_SHORT).show();
         });
 
         switchHistory.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -275,10 +292,12 @@ public class SettingsActivity extends AppCompatActivity {
      * Применить zoom настройки к WebView в MainActivity
      */
     private void applyZoomToWebView() {
-        // Отправляем broadcast для обновления zoom в MainActivity
-        Intent intent = new Intent("redteam.tube.APPLY_ZOOM");
-        sendBroadcast(intent);
+        // Restart MainActivity для применения zoom настроек
+        Intent intent = new Intent();
+        intent.setComponent(new ComponentName("redteam.tube", "redteam.tube.MainActivity"));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
-        Toast.makeText(this, "Zoom settings applied", Toast.LENGTH_SHORT).show();
+        startActivity(intent);
+        finish();
     }
 }

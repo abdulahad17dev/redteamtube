@@ -31,13 +31,16 @@ import redteam.tube.utils.YouTubeWebViewClient;
 import android.app.ActivityOptions;
 import android.content.ComponentName;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.util.Log;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
+    private static final int REQUEST_CODE_OVERLAY_PERMISSION = 1001;
 
     private WebView webView;
     private ProgressBar progressBar;
@@ -58,6 +61,12 @@ public class MainActivity extends AppCompatActivity {
 
     // Broadcast receiver для zoom настроек
     private android.content.BroadcastReceiver zoomReceiver;
+
+    // Floating back button overlay
+    private android.view.WindowManager windowManager;
+    private View floatingBackButton;
+    private android.view.WindowManager.LayoutParams floatingParams;
+    private android.content.BroadcastReceiver floatingBackReceiver;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -100,6 +109,15 @@ public class MainActivity extends AppCompatActivity {
         // Register broadcast receiver для zoom обновлений
         registerZoomReceiver();
 
+        // Initialize WindowManager and floating back button
+        windowManager = (android.view.WindowManager) getSystemService(WINDOW_SERVICE);
+        registerFloatingBackReceiver();
+
+        // Show floating back button if enabled
+        if (preferencesManager.isFloatingBackEnabled()) {
+            showFloatingBackButton();
+        }
+
         // Load URL from intent or default
         String url = getIntent().getStringExtra("url");
         if (url == null || url.isEmpty()) {
@@ -124,6 +142,225 @@ public class MainActivity extends AppCompatActivity {
 
         android.content.IntentFilter filter = new android.content.IntentFilter("redteam.tube.APPLY_ZOOM");
         registerReceiver(zoomReceiver, filter);
+    }
+
+    /**
+     * Регистрирует BroadcastReceiver для toggle floating back button
+     */
+    private void registerFloatingBackReceiver() {
+        floatingBackReceiver = new android.content.BroadcastReceiver() {
+            @Override
+            public void onReceive(android.content.Context context, Intent intent) {
+                if ("redteam.tube.TOGGLE_FLOATING_BACK".equals(intent.getAction())) {
+                    boolean enabled = intent.getBooleanExtra("enabled", false);
+                    Log.i(TAG, "Received floating back toggle: " + enabled);
+
+                    if (enabled) {
+                        showFloatingBackButton();
+                    } else {
+                        hideFloatingBackButton();
+                    }
+                }
+            }
+        };
+
+        android.content.IntentFilter filter = new android.content.IntentFilter("redteam.tube.TOGGLE_FLOATING_BACK");
+        registerReceiver(floatingBackReceiver, filter);
+    }
+
+    /**
+     * Показать floating back button overlay
+     */
+    private void showFloatingBackButton() {
+        if (floatingBackButton != null) {
+            // Already shown
+            return;
+        }
+
+        try {
+            // Inflate floating button layout
+            floatingBackButton = getLayoutInflater().inflate(R.layout.floating_back_button, null);
+
+            // Setup WindowManager.LayoutParams
+            // Для Geely/Ecarx используем TYPE_PHONE который не требует специального разрешения
+            int windowType;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                // Android 8.0+ - пробуем TYPE_APPLICATION_OVERLAY если есть разрешение
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M
+                        && Settings.canDrawOverlays(this)) {
+                    windowType = android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+                } else {
+                    // Fallback на TYPE_PHONE (deprecated но работает без разрешений)
+                    windowType = android.view.WindowManager.LayoutParams.TYPE_PHONE;
+                }
+            } else {
+                // Android 7.x и ниже - TYPE_PHONE работает без проблем
+                windowType = android.view.WindowManager.LayoutParams.TYPE_PHONE;
+            }
+
+            floatingParams = new android.view.WindowManager.LayoutParams(
+                    android.view.WindowManager.LayoutParams.WRAP_CONTENT,
+                    android.view.WindowManager.LayoutParams.WRAP_CONTENT,
+                    windowType,
+                    android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                    android.graphics.PixelFormat.TRANSLUCENT
+            );
+
+            // Set initial position from preferences
+            floatingParams.gravity = android.view.Gravity.TOP | android.view.Gravity.START;
+            floatingParams.x = preferencesManager.getFloatingBackX();
+            floatingParams.y = preferencesManager.getFloatingBackY();
+
+            // Set click listener - только webView.goBack(), НЕ закрывать приложение
+            android.widget.ImageButton btnFloating = floatingBackButton.findViewById(R.id.floatingBackButton);
+            btnFloating.setOnClickListener(v -> {
+                if (webView != null && webView.canGoBack()) {
+                    webView.goBack();
+                    Log.i(TAG, "Floating back button: navigating back in WebView");
+                } else {
+                    Log.i(TAG, "Floating back button: WebView cannot go back");
+                    Toast.makeText(this, "Cannot go back", Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            // Add drag functionality AFTER click listener
+            setupFloatingButtonDrag(btnFloating);
+
+            // Add to window
+            windowManager.addView(floatingBackButton, floatingParams);
+
+            Log.i(TAG, "Floating back button shown at X=" + floatingParams.x + ", Y=" + floatingParams.y + " with type=" + windowType);
+
+        } catch (android.view.WindowManager.BadTokenException e) {
+            Log.e(TAG, "BadTokenException - trying to request overlay permission", e);
+
+            // Если не получилось, пробуем запросить разрешение (только если система поддерживает)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                requestOverlayPermission();
+            } else {
+                Toast.makeText(this, "Failed to show floating button", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to show floating back button", e);
+            Toast.makeText(this, "Failed to show floating button: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Запросить разрешение на отображение overlay
+     */
+    private void requestOverlayPermission() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            try {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + getPackageName()));
+                startActivityForResult(intent, REQUEST_CODE_OVERLAY_PERMISSION);
+
+                Toast.makeText(this,
+                        "Please grant overlay permission to use floating back button",
+                        Toast.LENGTH_LONG).show();
+            } catch (android.content.ActivityNotFoundException e) {
+                Log.w(TAG, "MANAGE_OVERLAY_PERMISSION activity not found (custom ROM?)", e);
+                Toast.makeText(this,
+                        "Overlay permission screen not available on this device",
+                        Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQUEST_CODE_OVERLAY_PERMISSION) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                if (Settings.canDrawOverlays(this)) {
+                    Log.i(TAG, "Overlay permission granted");
+                    Toast.makeText(this, "Overlay permission granted", Toast.LENGTH_SHORT).show();
+
+                    // Показываем floating кнопку если она должна быть включена
+                    if (preferencesManager.isFloatingBackEnabled()) {
+                        showFloatingBackButton();
+                    }
+                } else {
+                    Log.w(TAG, "Overlay permission denied");
+                    Toast.makeText(this, "Overlay permission denied. Floating button disabled.", Toast.LENGTH_LONG).show();
+
+                    // Выключаем настройку если разрешение не дали
+                    preferencesManager.setFloatingBackEnabled(false);
+                }
+            }
+        }
+    }
+
+    /**
+     * Скрыть floating back button overlay
+     */
+    private void hideFloatingBackButton() {
+        if (floatingBackButton != null) {
+            try {
+                windowManager.removeView(floatingBackButton);
+                floatingBackButton = null;
+                Log.i(TAG, "Floating back button hidden");
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to hide floating back button", e);
+            }
+        }
+    }
+
+    /**
+     * Setup drag and drop для floating кнопки
+     */
+    private void setupFloatingButtonDrag(android.widget.ImageButton button) {
+        button.setOnTouchListener(new View.OnTouchListener() {
+            private int initialX;
+            private int initialY;
+            private float initialTouchX;
+            private float initialTouchY;
+            private boolean isDragging = false;
+
+            @Override
+            public boolean onTouch(View v, android.view.MotionEvent event) {
+                switch (event.getAction()) {
+                    case android.view.MotionEvent.ACTION_DOWN:
+                        initialX = floatingParams.x;
+                        initialY = floatingParams.y;
+                        initialTouchX = event.getRawX();
+                        initialTouchY = event.getRawY();
+                        isDragging = false;
+                        return true; // Consume DOWN event
+
+                    case android.view.MotionEvent.ACTION_MOVE:
+                        floatingParams.x = initialX + (int) (event.getRawX() - initialTouchX);
+                        floatingParams.y = initialY + (int) (event.getRawY() - initialTouchY);
+                        windowManager.updateViewLayout(floatingBackButton, floatingParams);
+
+                        // Check if actually dragging (moved more than threshold)
+                        int deltaX = (int) Math.abs(event.getRawX() - initialTouchX);
+                        int deltaY = (int) Math.abs(event.getRawY() - initialTouchY);
+                        if (deltaX > 10 || deltaY > 10) {
+                            isDragging = true;
+                        }
+                        return true; // Consume move event
+
+                    case android.view.MotionEvent.ACTION_UP:
+                        // Save position to preferences
+                        preferencesManager.setFloatingBackX(floatingParams.x);
+                        preferencesManager.setFloatingBackY(floatingParams.y);
+                        Log.i(TAG, "Floating button position saved: X=" + floatingParams.x + ", Y=" + floatingParams.y);
+
+                        // If it was a click (not dragging), perform click
+                        if (!isDragging) {
+                            v.performClick();
+                            return true;
+                        }
+
+                        isDragging = false;
+                        return true; // Consume UP event
+                }
+                return false;
+            }
+        });
     }
 
     private void initViews() {
@@ -173,6 +410,12 @@ public class MainActivity extends AppCompatActivity {
 
     @SuppressLint("SetJavaScriptEnabled")
     private void setupWebView() {
+        // Enable WebView debugging для Chrome DevTools (chrome://inspect)
+        // Это позволит инспектировать HTML элементы
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
+
         WebSettings webSettings = webView.getSettings();
 
         // Enable JavaScript (required for YouTube)
@@ -660,8 +903,45 @@ public class MainActivity extends AppCompatActivity {
         // Page Zoom (CSS zoom на body)
         int pageZoom = preferencesManager.getPageZoom(); // 50-200%
         float pageZoomFloat = pageZoom / 100.0f; // Convert to 0.5-2.0
-        String scriptPageZoom = "document.body.style.zoom = '" + pageZoomFloat + "';";
-        webView.evaluateJavascript(scriptPageZoom, null);
+
+        // JavaScript с handler который постоянно проверяет fullscreen режим
+        StringBuilder scriptBuilder = new StringBuilder();
+        scriptBuilder.append("(function() {");
+        scriptBuilder.append("  var originalZoom = ").append(pageZoomFloat).append(";");
+        scriptBuilder.append("  var isFullscreenActive = false;");
+        scriptBuilder.append("  function checkFullscreenAndApplyZoom() {");
+        scriptBuilder.append("    var player = document.querySelector('#movie_player');");
+        scriptBuilder.append("    if (player) {");
+        scriptBuilder.append("      var isNowFullscreen = player.classList.contains('ytp-fullscreen');");
+        scriptBuilder.append("      if (isNowFullscreen !== isFullscreenActive) {");
+        scriptBuilder.append("        isFullscreenActive = isNowFullscreen;");
+        scriptBuilder.append("        if (isFullscreenActive) {");
+        scriptBuilder.append("          document.body.style.zoom = '1.0';");
+        scriptBuilder.append("        } else {");
+        scriptBuilder.append("          document.body.style.zoom = originalZoom;");
+        scriptBuilder.append("        }");
+        scriptBuilder.append("      }");
+        scriptBuilder.append("    }");
+        scriptBuilder.append("  }");
+        scriptBuilder.append("  document.body.style.zoom = originalZoom;");
+        scriptBuilder.append("  if (window.fullscreenZoomChecker) {");
+        scriptBuilder.append("    clearInterval(window.fullscreenZoomChecker);");
+        scriptBuilder.append("  }");
+        scriptBuilder.append("  window.fullscreenZoomChecker = setInterval(checkFullscreenAndApplyZoom, 500);");
+        scriptBuilder.append("  checkFullscreenAndApplyZoom();");
+        scriptBuilder.append("})();");
+
+        webView.evaluateJavascript(scriptBuilder.toString(), null);
+
+//        int videoZoomPercent = (int)(100.0f / pageZoomFloat);
+//        String scriptVideoZoom =
+//            "(function() {" +
+//            "  var video = document.querySelector('video');" +
+//            "  if (video) {" +
+//            "    video.style.zoom = '" + videoZoomPercent + "%';" +
+//            "  }" +
+//            "})();";
+//        webView.evaluateJavascript(scriptVideoZoom, null);
 
         // Text Size (setTextZoom)
         int textSize = preferencesManager.getTextSize(); // 50-200%
@@ -700,6 +980,15 @@ public class MainActivity extends AppCompatActivity {
             unregisterReceiver(zoomReceiver);
             zoomReceiver = null;
         }
+
+        // Unregister floating back receiver
+        if (floatingBackReceiver != null) {
+            unregisterReceiver(floatingBackReceiver);
+            floatingBackReceiver = null;
+        }
+
+        // Remove floating back button
+        hideFloatingBackButton();
 
         // WebView cleanup
         if (webView != null) {
