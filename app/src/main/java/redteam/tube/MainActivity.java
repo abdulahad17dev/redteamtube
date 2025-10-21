@@ -61,7 +61,8 @@ public class MainActivity extends AppCompatActivity {
     // Broadcast receiver для zoom настроек
     private android.content.BroadcastReceiver zoomReceiver;
 
-    // Floating back button (internal View - no permission required)
+    // Floating button panel with 3 buttons (internal View - no permission required)
+    private android.view.ViewGroup floatingButtonPanel;
     private android.widget.ImageButton floatingBackButton;
     private android.content.BroadcastReceiver floatingBackReceiver;
     private float dX, dY;
@@ -167,39 +168,82 @@ public class MainActivity extends AppCompatActivity {
      */
     private void setupFloatingBackButton() {
         // Get floating button from layout
+        // Find floating panel and all buttons
+        floatingButtonPanel = findViewById(R.id.floatingButtonPanel);
         floatingBackButton = findViewById(R.id.floatingBackButton);
+        ImageButton floatingSearchButton = findViewById(R.id.floatingSearchButton);
+        ImageButton floatingFullscreenButton = findViewById(R.id.floatingFullscreenButton);
 
         // Set visibility based on preference
         if (preferencesManager.isFloatingBackEnabled()) {
-            floatingBackButton.setVisibility(View.VISIBLE);
+            floatingButtonPanel.setVisibility(View.VISIBLE);
         } else {
-            floatingBackButton.setVisibility(View.GONE);
+            floatingButtonPanel.setVisibility(View.GONE);
         }
 
-        // Restore saved position
-        floatingBackButton.post(() -> {
+        // Restore saved position for panel
+        floatingButtonPanel.post(() -> {
             float savedX = preferencesManager.getFloatingBackX();
             float savedY = preferencesManager.getFloatingBackY();
 
             if (savedX != 0 || savedY != 0) {
-                floatingBackButton.setX(savedX);
-                floatingBackButton.setY(savedY);
-                Log.i(TAG, "Restored floating button position: X=" + savedX + ", Y=" + savedY);
+                floatingButtonPanel.setX(savedX);
+                floatingButtonPanel.setY(savedY);
+                Log.i(TAG, "Restored floating panel position: X=" + savedX + ", Y=" + savedY);
             }
         });
 
-        // Set click listener - webView.goBack(), НЕ закрывать приложение
+        // 1. Back button - webView.goBack()
         floatingBackButton.setOnClickListener(v -> {
             if (webView != null && webView.canGoBack()) {
                 webView.goBack();
                 Log.i(TAG, "Floating back button: navigating back in WebView");
             } else {
-                // НЕ закрываем приложение - просто ничего не делаем
                 Log.i(TAG, "Floating back button: WebView cannot go back - ignoring");
             }
         });
 
-        // Add drag functionality
+        // 2. Search button - open YouTube search
+        floatingSearchButton.setOnClickListener(v -> {
+            webView.evaluateJavascript(
+                "(function() {" +
+                "  var searchBtn = document.querySelector('.icon-button.topbar-menu-button-avatar-button');" +
+                "  if (searchBtn) {" +
+                "    searchBtn.click();" +
+                "    setTimeout(function() {" +
+                "      var searchInput = document.querySelector('.ytSearchboxComponentInput.yt-searchbox-input');" +
+                "      if (searchInput) {" +
+                "        searchInput.click();" +
+                "      }" +
+                "    }, 500);" +
+                "  }" +
+                "})();",
+                null
+            );
+            Log.i(TAG, "Floating search button clicked");
+        });
+
+        // 3. Fullscreen button - enter fullscreen mode
+        floatingFullscreenButton.setOnClickListener(v -> {
+            webView.evaluateJavascript(
+                "(function() {" +
+                "  var playerBg = document.querySelector('.player-controls-background');" +
+                "  if (playerBg) {" +
+                "    playerBg.click();" +
+                "    setTimeout(function() {" +
+                "      var fullscreenBtn = document.querySelector('.icon-button.fullscreen-icon');" +
+                "      if (fullscreenBtn) {" +
+                "        fullscreenBtn.click();" +
+                "      }" +
+                "    }, 500);" +
+                "  }" +
+                "})();",
+                null
+            );
+            Log.i(TAG, "Floating fullscreen button clicked");
+        });
+
+        // Add drag functionality for panel
         setupFloatingButtonDrag();
 
         Log.i(TAG, "Floating back button setup complete (internal View)");
@@ -209,8 +253,8 @@ public class MainActivity extends AppCompatActivity {
      * Показать floating back button
      */
     private void showFloatingBackButton() {
-        if (floatingBackButton != null) {
-            floatingBackButton.setVisibility(View.VISIBLE);
+        if (floatingButtonPanel != null) {
+            floatingButtonPanel.setVisibility(View.VISIBLE);
             Log.i(TAG, "Floating back button shown");
         }
     }
@@ -219,8 +263,8 @@ public class MainActivity extends AppCompatActivity {
      * Скрыть floating back button
      */
     private void hideFloatingBackButton() {
-        if (floatingBackButton != null) {
-            floatingBackButton.setVisibility(View.GONE);
+        if (floatingButtonPanel != null) {
+            floatingButtonPanel.setVisibility(View.GONE);
             Log.i(TAG, "Floating back button hidden");
         }
     }
@@ -229,7 +273,7 @@ public class MainActivity extends AppCompatActivity {
      * Setup drag and drop для floating кнопки (internal View version)
      */
     private void setupFloatingButtonDrag() {
-        floatingBackButton.setOnTouchListener(new View.OnTouchListener() {
+        floatingButtonPanel.setOnTouchListener(new View.OnTouchListener() {
             private boolean isDragging = false;
             private float initialX;
             private float initialY;
@@ -391,19 +435,19 @@ public class MainActivity extends AppCompatActivity {
 
                 // Apply zoom settings from preferences
                 applyZoomSettings();
-
+                
                 // Save to history only if enabled (exclude default YouTube homepage)
                 if (preferencesManager.isHistoryEnabled() &&
-                    !url.equals("https://m.youtube.com") &&
-                    !url.equals("https://m.youtube.com/") &&
-                    !url.equals("https://www.youtube.com") &&
-                    !url.equals("https://www.youtube.com/")) {
+                        !url.equals("https://m.youtube.com") &&
+                        !url.equals("https://m.youtube.com/") &&
+                        !url.equals("https://www.youtube.com") &&
+                        !url.equals("https://www.youtube.com/")) {
                     webView.evaluateJavascript(
-                        "(function() { return document.title; })();",
-                        title -> {
-                            String cleanTitle = title != null ? title.replace("\"", "") : "YouTube";
-                            historyDatabase.addHistory(url, cleanTitle);
-                        }
+                            "(function() { return document.title; })();",
+                            title -> {
+                                String cleanTitle = title != null ? title.replace("\"", "") : "YouTube";
+                                historyDatabase.addHistory(url, cleanTitle);
+                            }
                     );
                 }
             }
@@ -434,8 +478,8 @@ public class MainActivity extends AppCompatActivity {
                 // Add custom view to DecorView
                 FrameLayout decorView = (FrameLayout) getWindow().getDecorView();
                 decorView.addView(customView, new FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.MATCH_PARENT
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.MATCH_PARENT
                 ));
 
                 // НЕ перемещаем floating button - просто поднимаем на максимальный elevation
@@ -560,11 +604,11 @@ public class MainActivity extends AppCompatActivity {
         }
 
         webView.evaluateJavascript(
-            "(function() { return document.fullscreenElement !== null; })();",
-            result -> {
-                boolean isFullscreen = "true".equals(result);
-                updateButtonVisibility(!isFullscreen);
-            }
+                "(function() { return document.fullscreenElement !== null; })();",
+                result -> {
+                    boolean isFullscreen = "true".equals(result);
+                    updateButtonVisibility(!isFullscreen);
+                }
         );
     }
 
@@ -657,13 +701,13 @@ public class MainActivity extends AppCompatActivity {
     private void playVideo() {
         if (webView != null) {
             webView.evaluateJavascript(
-                "(function() {" +
-                "  var video = document.querySelector('video');" +
-                "  if (!video) return 'error: No video element found';" +
-                "  video.play();" +
-                "  return 'Video playing';" +
-                "})();",
-                null
+                    "(function() {" +
+                            "  var video = document.querySelector('video');" +
+                            "  if (!video) return 'error: No video element found';" +
+                            "  video.play();" +
+                            "  return 'Video playing';" +
+                            "})();",
+                    null
             );
         }
     }
@@ -672,13 +716,13 @@ public class MainActivity extends AppCompatActivity {
         if (webView != null) {
 
             webView.evaluateJavascript(
-                "(function() {" +
-                "  var video = document.querySelector('video');" +
-                "  if (!video) return 'error: No video element found';" +
-                "  video.pause();" +
-                "  return 'Video paused';" +
-                "})();",
-                null
+                    "(function() {" +
+                            "  var video = document.querySelector('video');" +
+                            "  if (!video) return 'error: No video element found';" +
+                            "  video.pause();" +
+                            "  return 'Video paused';" +
+                            "})();",
+                    null
             );
         }
     }
@@ -686,18 +730,18 @@ public class MainActivity extends AppCompatActivity {
     private void togglePlayPause() {
         if (webView != null) {
             webView.evaluateJavascript(
-                "(function() {" +
-                "  var video = document.querySelector('video');" +
-                "  if (!video) return 'error: No video element found';" +
-                "  if (video.paused) {" +
-                "    video.play();" +
-                "    return 'Video resumed';" +
-                "  } else {" +
-                "    video.pause();" +
-                "    return 'Video paused';" +
-                "  }" +
-                "})();",
-                null
+                    "(function() {" +
+                            "  var video = document.querySelector('video');" +
+                            "  if (!video) return 'error: No video element found';" +
+                            "  if (video.paused) {" +
+                            "    video.play();" +
+                            "    return 'Video resumed';" +
+                            "  } else {" +
+                            "    video.pause();" +
+                            "    return 'Video paused';" +
+                            "  }" +
+                            "})();",
+                    null
             );
         }
     }
@@ -705,15 +749,15 @@ public class MainActivity extends AppCompatActivity {
     private void nextVideo() {
         if (webView != null) {
             webView.evaluateJavascript(
-                "(function() {" +
-                "  var buttons = document.querySelectorAll('.player-middle-controls-prev-next-button');" +
-                "  if (buttons.length > 1) {" +
-                "    buttons[1].click();" +
-                "    return 'Next video clicked';" +
-                "  }" +
-                "  return 'error: Next button not found';" +
-                "})();",
-                null
+                    "(function() {" +
+                            "  var buttons = document.querySelectorAll('.player-middle-controls-prev-next-button');" +
+                            "  if (buttons.length > 1) {" +
+                            "    buttons[1].click();" +
+                            "    return 'Next video clicked';" +
+                            "  }" +
+                            "  return 'error: Next button not found';" +
+                            "})();",
+                    null
             );
         }
     }
@@ -721,14 +765,14 @@ public class MainActivity extends AppCompatActivity {
     private void previousVideo() {
         if (webView != null) {
             webView.evaluateJavascript(
-                "(function() {" +
-                "  if (window.history.length > 1) {" +
-                "    window.history.back();" +
-                "    return 'Navigated back';" +
-                "  }" +
-                "  return 'error: No history';" +
-                "})();",
-                null
+                    "(function() {" +
+                            "  if (window.history.length > 1) {" +
+                            "    window.history.back();" +
+                            "    return 'Navigated back';" +
+                            "  }" +
+                            "  return 'error: No history';" +
+                            "})();",
+                    null
             );
         }
     }
@@ -749,7 +793,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.i(TAG, "║          DISPLAY ID DETECTION                            ║");
                 Log.i(TAG, "╠═══════════════════════════════════════════════════════════╣");
                 Log.i(TAG, "║ Display ID: " + currentDisplayId + " (0x" +
-                      Integer.toHexString(currentDisplayId) + ")");
+                        Integer.toHexString(currentDisplayId) + ")");
                 Log.i(TAG, "║ Display Name: " + DisplayIdConstants.getDisplayName(currentDisplayId));
                 Log.i(TAG, "║ Is Fullscreen Display: " + isLaunchedInFullscreenDisplay);
                 Log.i(TAG, "║ Is Rear Display: " + DisplayIdConstants.isRearDisplay(currentDisplayId));
@@ -762,8 +806,8 @@ public class MainActivity extends AppCompatActivity {
 
                     // Показываем Toast с информацией
                     Toast.makeText(this,
-                        "Launched in " + DisplayIdConstants.getDisplayName(currentDisplayId),
-                        Toast.LENGTH_LONG).show();
+                            "Launched in " + DisplayIdConstants.getDisplayName(currentDisplayId),
+                            Toast.LENGTH_LONG).show();
                 }
             }
         } else {
