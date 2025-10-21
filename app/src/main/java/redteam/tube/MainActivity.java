@@ -215,7 +215,7 @@ public class MainActivity extends AppCompatActivity {
                 "      if (searchInput) {" +
                 "        searchInput.click();" +
                 "      }" +
-                "    }, 500);" +
+                "    }, 300);" +
                 "  }" +
                 "})();",
                 null
@@ -235,7 +235,7 @@ public class MainActivity extends AppCompatActivity {
                 "      if (fullscreenBtn) {" +
                 "        fullscreenBtn.click();" +
                 "      }" +
-                "    }, 500);" +
+                "    }, 300);" +
                 "  }" +
                 "})();",
                 null
@@ -291,8 +291,28 @@ public class MainActivity extends AppCompatActivity {
                         return true;
 
                     case android.view.MotionEvent.ACTION_MOVE:
-                        v.setX(event.getRawX() + dX);
-                        v.setY(event.getRawY() + dY);
+                        // Calculate new position
+                        float newX = event.getRawX() + dX;
+                        float newY = event.getRawY() + dY;
+
+                        // Get screen dimensions
+                        android.util.DisplayMetrics displayMetrics = new android.util.DisplayMetrics();
+                        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+                        int screenWidth = displayMetrics.widthPixels;
+                        int screenHeight = displayMetrics.heightPixels;
+
+                        // Get panel dimensions
+                        int panelWidth = v.getWidth();
+                        int panelHeight = v.getHeight();
+
+                        // Apply boundaries - keep panel within screen
+                        if (newX < 0) newX = 0;
+                        if (newY < 0) newY = 0;
+                        if (newX + panelWidth > screenWidth) newX = screenWidth - panelWidth;
+                        if (newY + panelHeight > screenHeight) newY = screenHeight - panelHeight;
+
+                        v.setX(newX);
+                        v.setY(newY);
                         lastAction = android.view.MotionEvent.ACTION_MOVE;
 
                         // Check if actually dragging (moved more than threshold)
