@@ -4,6 +4,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="true"
@@ -28,6 +30,19 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="http"/>
+                <data android:scheme="https"/>
+                <data android:host="yandex.ru"/>
+                <data android:pathPattern="/maps"/>
+                <data android:pathPattern="/maps/.*"/>
+            </intent-filter>
+
         </activity>
 
         <activity
@@ -39,6 +54,22 @@
             android:name=".HistoryActivity"
             android:exported="false"
             android:label="History" />
+
+        <!-- BroadcastReceiver для управления из других приложений и через ADB -->
+        <receiver
+            android:name=".YouTubeControlReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="redteam.tube.CONTROL" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Foreground Service для приема команд даже когда UI закрыт -->
+        <service
+            android:name=".ControlListenerService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <service
             android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"

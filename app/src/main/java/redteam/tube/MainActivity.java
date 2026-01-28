@@ -73,6 +73,42 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Тест: резолвим короткую ссылку и показываем диалог выбора навигатора
+//        String shortUrl = "https://yandex.ru/maps/-/CLcyqLKX";
+
+//        YandexLinkResolver.resolve(this, shortUrl, (latitude, longitude, finalUrl) -> {
+//            if (latitude != null) {
+//                Log.d("MAP", "Lat: " + latitude);
+//                Log.d("MAP", "Lon: " + longitude);
+//                Log.d("MAP", "Final URL: " + finalUrl);
+//
+//                // Показываем диалог выбора навигатора
+//                NavigatorChooser.showAndNavigate(this, latitude, longitude);
+//            } else {
+//                Log.e("MAP", "Координаты не найдены!");
+//                Toast.makeText(this, "Не удалось получить координаты", Toast.LENGTH_SHORT).show();
+//            }
+//        });
+
+        String shortUrl = "https://www.google.com/maps/place/ARCADA+game+club/@41.268005,69.244262,17z/data=!3m1!4b1!4m6!3m5!1s0x38ae8b8dc631d0bf:0xcf043a320f05466b!8m2!3d41.268005!4d69.244262!16s%2Fg%2F11pb1_0ddm?entry=ttu&g_ep=EgoyMDI1MTEyMy4xIKXMDSoASAFQAw%3D%3D";
+
+        // Или полная ссылка
+//        String fullUrl = "https://www.google.com/maps/place/ARCADA+game+club/@41.268005,69.244262,17z/...";
+//
+//        GoogleMapsLinkResolver.resolve(this, shortUrl, (latitude, longitude, finalUrl) -> {
+//            if (latitude != null) {
+//                Log.d("MAP", "Lat: " + latitude);  // 41.268005
+//                Log.d("MAP", "Lon: " + longitude); // 69.244262
+//
+//                // Открыть в навигаторе
+////                NavigatorChooser.showAndNavigate(this, latitude, longitude);
+//            } else {
+//                Log.e("MAP", "Координаты не найдены!");
+//            }
+//        });
+
+
+
         // Initialize preferences and database
         preferencesManager = new PreferencesManager(this);
         historyDatabase = HistoryDatabase.getInstance(this);
@@ -113,12 +149,65 @@ public class MainActivity extends AppCompatActivity {
         registerFloatingBackReceiver();
         setupFloatingBackButton();
 
+        // Set up control listener for YouTubeControlReceiver
+        YouTubeControlReceiver.setControlListener(this::handleControlCommand);
+
+        // Start ControlListenerService для приема команд даже когда UI закрыт
+        startControlService();
+
+        // Check if launched with control command
+        handleLaunchIntent(getIntent());
+
         // Load URL from intent or default
         String url = getIntent().getStringExtra("url");
         if (url == null || url.isEmpty()) {
             url = repository.getYouTubeUrl();
         }
         webView.loadUrl(url);
+    }
+
+    private void startControlService() {
+        try {
+            Intent serviceIntent = new Intent(this, ControlListenerService.class);
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent);
+            } else {
+                startService(serviceIntent);
+            }
+            Log.i(TAG, "✅ ControlListenerService started");
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Failed to start ControlListenerService", e);
+        }
+    }
+
+    /**
+     * Handle control commands from launch intent
+     */
+    private void handleLaunchIntent(Intent intent) {
+        if (intent == null) return;
+
+        String action = intent.getStringExtra("control_action");
+        if (action != null && !action.isEmpty()) {
+            // Wait for WebView to be ready
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                // Create new intent with proper extras
+                Intent controlIntent = new Intent();
+                controlIntent.putExtra("action", action);
+
+                // Add value extras
+                String strValue = intent.getStringExtra("control_value");
+                if (strValue != null) {
+                    controlIntent.putExtra("value", strValue);
+                }
+
+                int intValue = intent.getIntExtra("control_value_int", -1);
+                if (intValue != -1) {
+                    controlIntent.putExtra("value", intValue);
+                }
+
+                handleControlCommand(action, controlIntent);
+            }, 2000);
+        }
     }
 
     /**
@@ -161,6 +250,139 @@ public class MainActivity extends AppCompatActivity {
 
         android.content.IntentFilter filter = new android.content.IntentFilter("redteam.tube.TOGGLE_FLOATING_BACK");
         registerReceiver(floatingBackReceiver, filter);
+    }
+
+
+    /**
+     * Обработка команд управления
+     */
+    private void handleControlCommand(String action, Intent intent) {
+        try {
+            switch (action.toUpperCase()) {
+                // Playback controls
+                case "PLAY":
+                case "START_PLAYBACK":
+                    playVideo();
+                    showToast("Playing video");
+                    break;
+
+                case "PAUSE":
+                case "STOP_PLAYBACK":
+                    pauseVideo();
+                    showToast("Paused video");
+                    break;
+
+                case "TOGGLE":
+                case "TOGGLE_PLAYBACK":
+                    togglePlayPause();
+                    showToast("Toggled playback");
+                    break;
+
+                // Navigation
+                case "NEXT":
+                case "NEXT_VIDEO":
+                    nextVideo();
+                    showToast("Next video");
+                    break;
+
+                case "PREVIOUS":
+                case "PREV":
+                case "BACK":
+                    previousVideo();
+                    showToast("Previous video");
+                    break;
+
+                // Time controls
+                case "SEEK_TO":
+                    int seekTime = intent.getIntExtra("value", 0);
+                    seekToTime(seekTime);
+                    showToast("Seeked to " + seekTime + "s");
+                    break;
+
+                case "SKIP_FORWARD":
+                    int skipForwardAmount = intent.getIntExtra("value", 10);
+                    skipForward(skipForwardAmount);
+                    showToast("Skipped forward " + skipForwardAmount + "s");
+                    break;
+
+                case "SKIP_BACKWARD":
+                case "SKIP_BACK":
+                    int skipBackAmount = intent.getIntExtra("value", 10);
+                    skipBackward(skipBackAmount);
+                    showToast("Skipped backward " + skipBackAmount + "s");
+                    break;
+
+                // URL control
+                case "OPEN_URL":
+                case "LOAD_URL":
+                    String url = intent.getStringExtra("value");
+                    if (url != null && !url.isEmpty()) {
+                        webView.loadUrl(url);
+                        showToast("Loading URL");
+                    }
+                    break;
+
+                // Search
+                case "SEARCH":
+                case "SEARCH_YOUTUBE":
+                    String query = intent.getStringExtra("value");
+                    if (query != null && !query.isEmpty()) {
+                        searchYouTube(query);
+                        showToast("Searching: " + query);
+                    }
+                    break;
+
+                // Scraping
+                case "SCRAPE_PAGE":
+                case "SCRAPE_CURRENT_PAGE":
+                    scrapeCurrentPage(new ScrapingCallback() {
+                        @Override
+                        public void onSuccess(String result) {
+                            Log.i(TAG, "Scraped page: " + result);
+                            showToast("Page scraped successfully");
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            Log.e(TAG, "Scraping error: " + error);
+                            showToast("Scraping error: " + error);
+                        }
+                    });
+                    break;
+
+                case "SCRAPE_COMMENTS":
+                    scrapeComments(new ScrapingCallback() {
+                        @Override
+                        public void onSuccess(String result) {
+                            Log.i(TAG, "Scraped comments: " + result);
+                            showToast("Comments scraped successfully");
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            Log.e(TAG, "Comments scraping error: " + error);
+                            showToast("Comments error: " + error);
+                        }
+                    });
+                    break;
+
+                case "CLICK_FIRST_VIDEO":
+                    clickFirstVideo();
+                    showToast("Clicking first video");
+                    break;
+
+                default:
+                    Log.w(TAG, "Unknown control command: " + action);
+                    showToast("Unknown command: " + action);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling control command: " + action, e);
+            showToast("Error: " + e.getMessage());
+        }
+    }
+
+    private void showToast(String message) {
+        runOnUiThread(() -> Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show());
     }
 
     /**
@@ -384,11 +606,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void applyFullscreenSetting() {
-        if (preferencesManager.isFullscreenEnabled()) {
-            enableImmersiveMode();
-        } else {
-            disableImmersiveMode();
-        }
+//        if (preferencesManager.isFullscreenEnabled()) {
+//            enableImmersiveMode();
+//        } else {
+//            disableImmersiveMode();
+//        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -425,19 +647,12 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setUseWideViewPort(true);
         webSettings.setLoadWithOverviewMode(true);
 
-        // НЕ устанавливаем initialScale - пусть WebView управляет масштабом сам
-        // это позволит zoomIn()/zoomOut() работать правильно
-
-        // Set user agent to mobile for better YouTube mobile experience
         webSettings.setUserAgentString(webSettings.getUserAgentString().replace("; wv", ""));
 
-        // Enable mixed content (if needed)
         webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
-        // Enable hardware acceleration
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
-        // Enable remote debugging for WebView
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
             WebView.setWebContentsDebuggingEnabled(true);
         }
@@ -455,7 +670,7 @@ public class MainActivity extends AppCompatActivity {
 
                 // Apply zoom settings from preferences
                 applyZoomSettings();
-                
+
                 // Save to history only if enabled (exclude default YouTube homepage)
                 if (preferencesManager.isHistoryEnabled() &&
                         !url.equals("https://m.youtube.com") &&
@@ -797,6 +1012,217 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Seek to specific time in video
+     * @param seconds Time in seconds to seek to
+     */
+    private void seekToTime(int seconds) {
+        if (webView != null) {
+            webView.evaluateJavascript(
+                    "(function() {" +
+                            "  var video = document.querySelector('video');" +
+                            "  if (!video) return 'error: No video element found';" +
+                            "  var targetTime = Math.max(0, Math.min(" + seconds + ", video.duration));" +
+                            "  video.currentTime = targetTime;" +
+                            "  return 'Seeked to ' + targetTime + 's / ' + video.duration + 's';" +
+                            "})();",
+                    result -> Log.i(TAG, "Seek result: " + result)
+            );
+        }
+    }
+
+    /**
+     * Skip forward by N seconds (default 10)
+     * @param seconds Number of seconds to skip forward
+     */
+    private void skipForward(int seconds) {
+        if (webView != null) {
+            webView.evaluateJavascript(
+                    "(function() {" +
+                            "  var video = document.querySelector('video');" +
+                            "  if (!video) return 'error: No video element found';" +
+                            "  var oldTime = video.currentTime;" +
+                            "  var skipAmount = " + seconds + ";" +
+                            "  video.currentTime = Math.min(video.currentTime + skipAmount, video.duration);" +
+                            "  return 'Skipped forward ' + skipAmount + 's (from ' + oldTime + 's to ' + video.currentTime + 's)';" +
+                            "})();",
+                    result -> Log.i(TAG, "Skip forward result: " + result)
+            );
+        }
+    }
+
+    /**
+     * Skip backward by N seconds (default 10)
+     * @param seconds Number of seconds to skip backward
+     */
+    private void skipBackward(int seconds) {
+        if (webView != null) {
+            webView.evaluateJavascript(
+                    "(function() {" +
+                            "  var video = document.querySelector('video');" +
+                            "  if (!video) return 'error: No video element found';" +
+                            "  var oldTime = video.currentTime;" +
+                            "  var skipAmount = " + seconds + ";" +
+                            "  video.currentTime = Math.max(video.currentTime - skipAmount, 0);" +
+                            "  return 'Skipped backward ' + skipAmount + 's (from ' + oldTime + 's to ' + video.currentTime + 's)';" +
+                            "})();",
+                    result -> Log.i(TAG, "Skip backward result: " + result)
+            );
+        }
+    }
+
+    /**
+     * Click on first video in search results or feed
+     */
+    private void clickFirstVideo() {
+        if (webView != null) {
+            webView.evaluateJavascript(
+                    "(function() {" +
+                            "  var firstVideo = document.querySelector('ytm-video-with-context-renderer.item a, ytm-rich-item-renderer a');" +
+                            "  if (firstVideo) {" +
+                            "    firstVideo.click();" +
+                            "    return 'Clicked first video';" +
+                            "  }" +
+                            "  return 'error: No video found';" +
+                            "})();",
+                    result -> Log.i(TAG, "Click first video result: " + result)
+            );
+        }
+    }
+
+    /**
+     * Search YouTube for videos
+     * @param query Search query
+     */
+    private void searchYouTube(String query) {
+        if (webView == null || query == null || query.isEmpty()) {
+            return;
+        }
+
+        // URL encode the query
+        String encodedQuery = Uri.encode(query);
+        String searchUrl = "https://m.youtube.com/results?sp=mAEA&search_query=" + encodedQuery;
+
+        Log.i(TAG, "Searching YouTube: " + query);
+        webView.loadUrl(searchUrl);
+    }
+
+    /**
+     * Scrape current page for video metadata
+     * Returns JSON with video information
+     */
+    private void scrapeCurrentPage(ScrapingCallback callback) {
+        if (webView == null) {
+            callback.onError("WebView is null");
+            return;
+        }
+
+        webView.evaluateJavascript(
+                "(function() {" +
+                        "  var videos = [];" +
+                        "  var items = document.querySelectorAll('ytm-video-with-context-renderer.item.adaptive-feed-item, ytm-rich-item-renderer');" +
+                        "  items.forEach(function(item) {" +
+                        "    var titleEl = item.querySelector('h3.media-item-headline span.yt-core-attributed-string');" +
+                        "    var linkEl = item.querySelector('a.media-item-thumbnail-container');" +
+                        "    var detailsEls = item.querySelectorAll('ytm-badge-and-byline-renderer span');" +
+                        "    var durationEl = item.querySelector('ytm-thumbnail-overlay-time-status-renderer badge-shape div');" +
+                        "    " +
+                        "    if (titleEl && linkEl) {" +
+                        "      var video = {" +
+                        "        title: titleEl.textContent.trim()," +
+                        "        url: linkEl.href," +
+                        "        channel: detailsEls.length > 0 ? detailsEls[0].textContent.trim() : ''," +
+                        "        views: detailsEls.length > 1 ? detailsEls[1].textContent.trim() : ''," +
+                        "        recency: detailsEls.length > 2 ? detailsEls[2].textContent.trim() : ''," +
+                        "        duration: durationEl ? durationEl.textContent.trim() : ''" +
+                        "      };" +
+                        "      videos.push(video);" +
+                        "    }" +
+                        "  });" +
+                        "  return JSON.stringify({videos: videos, count: videos.length});" +
+                        "})();",
+                result -> {
+                    if (result != null && !result.equals("null")) {
+                        callback.onSuccess(result.replace("\\", ""));
+                    } else {
+                        callback.onError("No videos found");
+                    }
+                }
+        );
+    }
+
+    /**
+     * Scrape comments from current video
+     */
+    private void scrapeComments(ScrapingCallback callback) {
+        if (webView == null) {
+            callback.onError("WebView is null");
+            return;
+        }
+
+        // First, click comments button to open comments panel
+        webView.evaluateJavascript(
+                "(function() {" +
+                        "  var commentsBtn = document.querySelector('button[aria-label*=\"Comment\"], button[aria-label*=\"комментар\"]');" +
+                        "  if (commentsBtn) {" +
+                        "    commentsBtn.click();" +
+                        "    return 'clicked';" +
+                        "  }" +
+                        "  return 'not_found';" +
+                        "})();",
+                clickResult -> {
+                    if ("\"clicked\"".equals(clickResult)) {
+                        // Wait 2 seconds for comments to load, then scrape
+                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                            scrapeCommentsContent(callback);
+                        }, 2000);
+                    } else {
+                        callback.onError("Comments button not found");
+                    }
+                }
+        );
+    }
+
+    /**
+     * Scrape comments content (after panel is opened)
+     */
+    private void scrapeCommentsContent(ScrapingCallback callback) {
+        webView.evaluateJavascript(
+                "(function() {" +
+                        "  var comments = [];" +
+                        "  var commentThreads = document.querySelectorAll('ytm-comment-thread-renderer');" +
+                        "  commentThreads.forEach(function(thread) {" +
+                        "    var textEl = thread.querySelector('ytm-comment-renderer p.YtmCommentRendererText span.yt-core-attributed-string');" +
+                        "    var likesEl = thread.querySelector('ytm-comment-renderer span.YtmCommentRendererCount span.yt-core-attributed-string');" +
+                        "    " +
+                        "    if (textEl) {" +
+                        "      var comment = {" +
+                        "        text: textEl.textContent.trim()," +
+                        "        likes: likesEl ? likesEl.textContent.trim() : '0'" +
+                        "      };" +
+                        "      comments.push(comment);" +
+                        "    }" +
+                        "  });" +
+                        "  return JSON.stringify({comments: comments, count: comments.length});" +
+                        "})();",
+                result -> {
+                    if (result != null && !result.equals("null")) {
+                        callback.onSuccess(result.replace("\\", ""));
+                    } else {
+                        callback.onError("No comments found");
+                    }
+                }
+        );
+    }
+
+    /**
+     * Callback interface for scraping operations
+     */
+    interface ScrapingCallback {
+        void onSuccess(String result);
+        void onError(String error);
+    }
+
 
     /**
      * Определение Display ID на котором запущена Activity
@@ -973,6 +1399,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         stopFullscreenMonitoring();
+
+        // Remove control listener
+        YouTubeControlReceiver.removeControlListener();
 
         // Unregister zoom receiver
         if (zoomReceiver != null) {

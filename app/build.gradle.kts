@@ -36,6 +36,10 @@ android {
 
 dependencies {
 
+    implementation(files("libs/geely.adaptapi.jar"))
+    implementation(files("libs/geely.adapterimpl.jar"))
+    implementation(files("libs/geely-api.jar"))
+
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
