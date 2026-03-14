@@ -2,6 +2,7 @@ package redteam.tube;
 
 import android.annotation.SuppressLint;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -26,7 +27,10 @@ import redteam.tube.data.WebViewRepositoryImpl;
 import redteam.tube.domain.WebViewRepository;
 import redteam.tube.utils.DisplayIdConstants;
 import redteam.tube.utils.PreferencesManager;
+import redteam.tube.utils.UserAgentManager;
 import redteam.tube.utils.YouTubeWebViewClient;
+
+import android.webkit.CookieManager;
 
 import android.app.ActivityOptions;
 import android.content.ComponentName;
@@ -52,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
     private Runnable fullscreenCheckRunnable;
     private PreferencesManager preferencesManager;
     private HistoryDatabase historyDatabase;
+    private UserAgentManager userAgentManager;
 
 
     // Display ID поддержка
@@ -225,7 +230,11 @@ public class MainActivity extends AppCompatActivity {
         };
 
         android.content.IntentFilter filter = new android.content.IntentFilter("redteam.tube.APPLY_ZOOM");
-        registerReceiver(zoomReceiver, filter);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(zoomReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(zoomReceiver, filter);
+        }
     }
 
     /**
@@ -249,7 +258,11 @@ public class MainActivity extends AppCompatActivity {
         };
 
         android.content.IntentFilter filter = new android.content.IntentFilter("redteam.tube.TOGGLE_FLOATING_BACK");
-        registerReceiver(floatingBackReceiver, filter);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(floatingBackReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(floatingBackReceiver, filter);
+        }
     }
 
 
@@ -647,15 +660,40 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setUseWideViewPort(true);
         webSettings.setLoadWithOverviewMode(true);
 
-        webSettings.setUserAgentString(webSettings.getUserAgentString().replace("; wv", ""));
+        // Dynamic UA from GitHub config (cached locally)
+        userAgentManager = new UserAgentManager(this);
+        webSettings.setUserAgentString(userAgentManager.getUserAgent());
+        Log.i(TAG, "Using User-Agent: " + userAgentManager.getUserAgent());
+
+        // Fetch fresh UA list from GitHub in background for next launch
+        userAgentManager.fetchUserAgentsAsync(new UserAgentManager.OnFetchCompleteListener() {
+            @Override
+            public void onSuccess(String selectedAgent) {
+                Log.i(TAG, "Fetched new UA from GitHub: " + selectedAgent);
+            }
+            @Override
+            public void onError() {
+                Log.w(TAG, "Could not fetch UA from GitHub, using cached/default");
+            }
+        });
 
         webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
-            WebView.setWebContentsDebuggingEnabled(true);
+        // Fix 2: Setup cookies before loading YouTube
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.setAcceptCookie(true);
+        // Fix 3: Accept third-party cookies to keep session alive
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            cookieManager.setAcceptThirdPartyCookies(webView, true);
         }
+        // Set consent cookies to bypass GDPR/consent screens
+        cookieManager.setCookie("https://www.youtube.com", "CONSENT=PENDING+999");
+        cookieManager.setCookie("https://m.youtube.com", "CONSENT=PENDING+999");
+        cookieManager.setCookie("https://www.youtube.com", "SOCS=CAISEwgDEgk2ODE4MTY1NTQaAmVuIAEaBgiA_LyaBg");
+        cookieManager.setCookie("https://m.youtube.com", "SOCS=CAISEwgDEgk2ODE4MTY1NTQaAmVuIAEaBgiA_LyaBg");
+        cookieManager.flush();
 
         // Set WebViewClient
         webView.setWebViewClient(new YouTubeWebViewClient(new YouTubeWebViewClient.OnPageLoadListener() {
@@ -1101,7 +1139,7 @@ public class MainActivity extends AppCompatActivity {
 
         // URL encode the query
         String encodedQuery = Uri.encode(query);
-        String searchUrl = "https://m.youtube.com/results?sp=mAEA&search_query=" + encodedQuery;
+        String searchUrl = "https://www.youtube.com/results?search_query=" + encodedQuery;
 
         Log.i(TAG, "Searching YouTube: " + query);
         webView.loadUrl(searchUrl);

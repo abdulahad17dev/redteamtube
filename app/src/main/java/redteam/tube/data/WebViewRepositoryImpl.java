@@ -4,7 +4,7 @@ import redteam.tube.domain.WebViewRepository;
 
 public class WebViewRepositoryImpl implements WebViewRepository {
 
-    private static final String YOUTUBE_URL = "https://m.youtube.com";
+    private static final String YOUTUBE_URL = "https://www.youtube.com";
 
     @Override
     public String getYouTubeUrl() {
