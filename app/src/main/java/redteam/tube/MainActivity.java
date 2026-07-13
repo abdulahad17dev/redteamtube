@@ -171,6 +171,14 @@ public class MainActivity extends AppCompatActivity {
         webView.loadUrl(url);
     }
 
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        Log.i(TAG, "onNewIntent received");
+        handleLaunchIntent(intent);
+    }
+
     private void startControlService() {
         try {
             Intent serviceIntent = new Intent(this, ControlListenerService.class);
